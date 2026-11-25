@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evals · Lumen EMI Agent</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .page { max-width: 1200px; margin: 0 auto; padding: 20px 20px 48px; display: grid; gap: 18px; }
+  @media (max-width: 480px) { .page { padding-inline: 16px; } }
+  .page > * { min-width: 0; }
+  .hero { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; }
+  .hero h2 { font-size: 24px; margin: 4px 0 4px; line-height: 1.25; }
+  .hero p { margin: 0; color: var(--muted); font-size: 14px; max-width: 70ch; }
+  .picker { display: grid; gap: 4px; }
+  .picker label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .picker select { min-width: 240px; max-width: 100%; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--muted); }
+  .pill code { background: none; padding: 0; color: var(--ink); }
+
+  .sec-h { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .sec-h .badge-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+  .sec-h .badge-ico .ico { vertical-align: 0; }
+  .sec-h h2 { margin: 0; font-size: 16px; }
+  .sec-h p { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+  /* KPI cards */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(180px, calc((100% - 30px) / 4)), 1fr)); gap: 10px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 6px; box-shadow: var(--shadow); min-width: 0; }
+  .kpi .top { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .kpi .top .ico { color: var(--accent); }
+  .kpi .val { font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .kpi .val small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .kpi .val.na { color: var(--muted); font-size: 20px; }
+  .delta { justify-self: start; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .delta.good { background: var(--ok-bg); color: var(--ok); }
+  .delta.bad { background: var(--bad-bg); color: var(--bad); }
+
+  /* trend chart */
+  .chartwrap { overflow-x: auto; }
+  .chart { display: block; width: 100%; max-width: 880px; margin: 0 auto; min-width: 520px; height: auto; }
+  .chart text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .chart .axl { fill: var(--muted); font-size: 11px; }
+  .chart .runl { fill: var(--muted); font-size: 12px; font-weight: 600; }
+  .chart .runl.sel { fill: var(--ink); }
+  .chart .selband { fill: var(--accent-soft); }
+  .chart .l-pass { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+  .chart .l-silent { stroke: var(--warn); stroke-width: 2.5; fill: none; stroke-dasharray: 6 4; }
+  .chart .p-pass { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+  .chart .p-silent { fill: var(--warn); stroke: var(--card); stroke-width: 2; }
+  .chart .v { fill: var(--ink); font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+  .chart .v.silent { fill: var(--warn); }
+  .chart .na { fill: var(--muted); font-size: 11px; font-style: italic; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 18px; height: 0; border-top: 3px solid var(--accent); display: inline-block; }
+  .sw.silent { border-top: 3px dashed var(--warn); }
+  .sw.tile { width: 14px; height: 14px; border: 0; border-radius: 4px; }
+  .sw.tile.pass { background: var(--ok-bg); box-shadow: inset 0 0 0 1.5px var(--ok); }
+  .sw.tile.fail { background: var(--bad-bg); box-shadow: inset 0 0 0 1.5px var(--bad); }
+
+  /* heatmap */
+  .heat { display: grid; grid-template-columns: minmax(120px, 1.1fr) repeat(var(--reps, 3), 44px) minmax(0, 2fr); gap: 6px 8px; align-items: center; }
+  .heat .hh { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .heat .sc { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
+  .heat .sc span { display: block; font-family: system-ui, -apple-system, sans-serif; font-weight: 400; font-size: 11px; color: var(--muted); }
+  .heat .why { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .heat .why b { color: var(--ink); font-weight: 600; }
+  .tile { width: 44px; height: 40px; padding: 0; border-radius: 8px; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; line-height: 1; gap: 2px; }
+  .tile .ico { width: 15px; height: 15px; vertical-align: 0; }
+  .tile.pass { background: var(--ok-bg); color: var(--ok); box-shadow: inset 0 0 0 1.5px var(--ok); }
+  .tile.fail { background: var(--bad-bg); color: var(--bad); box-shadow: inset 0 0 0 1.5px var(--bad); }
+  .tile.err { background: var(--soft); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .tile:hover { transform: translateY(-1px); filter: saturate(1.3); }
+  @media (prefers-reduced-motion: reduce) { .tile:hover { transform: none; } }
+  @media (max-width: 640px) { .heat { grid-template-columns: minmax(0, 1fr) repeat(var(--reps, 3), 44px); } .heat .why, .heat .hh.whyh { display: none; } }
+
+  /* metric table */
+  .trust { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+  .trust.high { background: var(--ok-bg); color: var(--ok); }
+  .trust.medium { background: var(--warn-bg); color: var(--warn); }
+  .trust.low { background: var(--bad-bg); color: var(--bad); }
+  .trust.mixed, .trust.none { background: var(--soft); color: var(--muted); }
+  .mtable { min-width: 640px; font-size: 13px; }
+  .mtable td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mtable td.why { color: var(--muted); }
+
+  /* notes */
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .notes li { display: flex; gap: 10px; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--muted); background: var(--card); }
+  .notes li .ico { color: var(--warn); margin-top: 2px; }
+  .notes li b { color: var(--ink); display: block; }
+
+  /* drawer */
+  dialog.drawer { margin: 0 0 0 auto; padding: 0; border: 0; width: min(600px, 100vw); height: 100dvh; max-height: none; max-width: 100vw; background: var(--card); color: var(--ink); box-shadow: -8px 0 30px rgba(0, 0, 0, .25); }
+  dialog.drawer::backdrop { background: rgba(10, 14, 20, .45); }
+  dialog.drawer[open] { display: flex; flex-direction: column; animation: slide .2s ease-out; }
+  @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { dialog.drawer[open] { animation: none; } }
+  .dhead { display: flex; align-items: center; gap: 10px; padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 14px; border-bottom: 1px solid var(--line); }
+  .dhead h2 { margin: 0; font-size: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .dhead button { display: inline-flex; align-items: center; gap: 4px; }
+  .dbody { padding: 16px 18px calc(28px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; display: grid; gap: 16px; align-content: start; }
+  .dbody h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+  .tag .ico { width: 13px; height: 13px; vertical-align: 0; }
+  .tag.pass { background: var(--ok-bg); color: var(--ok); } .tag.fail { background: var(--bad-bg); color: var(--bad); }
+  .cmp { font-size: 12.5px; }
+  .cmp td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .cmp tr.miss td { background: var(--bad-bg); color: var(--bad); }
+  .cmp tr.miss td:first-child { color: var(--bad); }
+  .reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .reasons li { display: flex; gap: 8px; align-items: flex-start; background: var(--bad-bg); color: var(--bad); padding: 7px 10px; border-radius: 8px; font-size: 12.5px; overflow-wrap: anywhere; }
+  .reasons li.info { background: var(--soft); color: var(--muted); }
+  .reasons li .ico { margin-top: 1px; }
+  .scores { display: flex; flex-wrap: wrap; gap: 6px; }
+  .persona { font-size: 13px; color: var(--muted); background: var(--soft); border-radius: 8px; padding: 8px 10px; margin: 0; }
+  .conv { display: flex; flex-direction: column; gap: 8px; }
+  .bub { padding: 8px 12px; border-radius: 14px; max-width: 88%; overflow-wrap: anywhere; font-size: 13.5px; }
+  .bub .who { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .bub.agent { background: var(--agent); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bub.caller { background: var(--caller); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bub.tool { align-self: stretch; max-width: none; background: none; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 6px; padding: 5px 9px; font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .bub.tool b { color: var(--ink); }
+  .bub.tool .ico { color: var(--warn); width: 13px; height: 13px; }
+  .loading { color: var(--muted); padding: 20px 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h1M7 8v8M11 4v16M15 8v8M19 10v4"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-phoneoff" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1M5.2 13.4A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8"/><path d="M22 2 2 22"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-net" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.3 11 16.7 6M7.3 13l9.4 5"/></symbol>
+  <symbol id="i-flow" viewBox="0 0 24 24"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h9a3.5 3.5 0 0 1 0 7H8a3.5 3.5 0 0 0 0 7h9"/></symbol>
+  <symbol id="i-seq" viewBox="0 0 24 24"><path d="M6 3v18M18 3v18"/><path d="M6 8h11m-3-3 3 3-3 3M18 16H7m3-3-3 3 3 3"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+</svg>
+<header class="site">
+  <h1><span class="logo"><svg class="ico"><use href="#i-wave"/></svg></span><span>Lumen Finance<small>EMI reminder agent</small></span></h1>
+  <nav aria-label="Main">
+    <a href="/"><svg class="ico"><use href="#i-phone"/></svg>Call</a>
+    <a href="/how-it-works"><svg class="ico"><use href="#i-book"/></svg>How it works</a>
+    <a href="/evals" aria-current="page"><svg class="ico"><use href="#i-chart"/></svg>Evals</a>
+  </nav>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Evals</div>
+      <h2 id="hero-title">Scripted calls, scored by rules and a judge</h2>
+      <p id="hero-sub">Loading eval runs.</p>
+      <div class="meta-row" id="run-meta"></div>
+    </div>
+    <div class="picker">
+      <label for="run">Eval run</label>
+      <select id="run" disabled><option>Loading</option></select>
+    </div>
+  </section>
+
+  <div class="err card" id="err" role="alert" hidden></div>
+
+  <section aria-labelledby="kpi-h">
+    <div class="sec-h"><span class="badge-ico"><svg class="ico"><use href="#i-target"/></svg></span><div><h2 id="kpi-h">Headline numbers</h2><p id="kpi-sub">Change shown against run 1, the baseline.</p></div></div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="card" aria-labelledby="trend-h">
+    <div class="sec-h"><span class="badge-ico"><svg class="ico"><use href="#i-chart"/></svg></span><div><h2 id="trend-h">Across runs</h2><p>Pass rate and silent hang-ups, one change at a time.</p></div></div>
+    <div class="chartwrap"><svg class="chart" id="trend" viewBox="0 0 720 250" role="img" aria-label="Pass rate and silent hang-ups across eval runs"></svg></div>
+    <div class="legend"><span><i class="sw"></i>Pass, all checks</span><span><i class="sw silent"></i>Hung up without a spoken goodbye</span></div>
+  </section>
+
+  <section class="card" aria-labelledby="heat-h">
+    <div class="sec-h"><span class="badge-ico"><svg class="ico"><use href="#i-msg"/></svg></span><div><h2 id="heat-h">Every call in this run</h2><p>One tile per call. Open a tile to read the transcript and see why it passed or failed.</p></div></div>
+    <div class="legend" style="margin:0 0 12px"><span><i class="sw tile pass"></i>Pass</span><span><i class="sw tile fail"></i>Fail</span></div>
+    <div class="heat" id="heat"><p class="loading">Loading calls.</p></div>
+  </section>
+
+  <section class="card" aria-labelledby="tbl-h">
+    <div class="sec-h"><span class="badge-ico"><svg class="ico"><use href="#i-shield"/></svg></span><div><h2 id="tbl-h">All metrics, and how much to trust them</h2><p>Trust levels come from <code>docs/RESULTS.md</code>.</p></div></div>
+    <div class="scroll"><table class="mtable"><thead><tr><th>Metric</th><th id="th-sel">This run</th><th>Run 1</th><th>Trust</th><th>Why</th></tr></thead><tbody id="mbody"></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="notes-h">
+    <div class="sec-h"><span class="badge-ico"><svg class="ico"><use href="#i-info"/></svg></span><div><h2 id="notes-h">Read these numbers with care</h2></div></div>
+    <ul class="notes" id="notes"></ul>
+  </section>
+</main>
+
+<dialog class="drawer" id="drawer" aria-labelledby="d-title">
+  <div class="dhead">
+    <h2 id="d-title"></h2><span id="d-tag"></span>
+    <button type="button" class="ghost" id="d-close"><svg class="ico"><use href="#i-x"/></svg>Close</button>
+  </div>
+  <div class="dbody" id="d-body"></div>
+</dialog>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const icon = (id, cls = '') => `<svg class="ico ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+async function getJSON(path) { const r = await fetch(path); if (!r.ok) throw new Error(`${path} returned ${r.status}`); return r.json(); }
+const showErr = (m) => { $('#err').textContent = m; $('#err').hidden = !m; };
+
+// "91% (49/54)" -> { pct, num, den }; 4.85 -> { val }; "518 / 728" -> { parts }
+function parse(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return { val: v };
+  let m = String(v).match(/^(\d+)% \((\d+)\/(\d+)\)$/);
+  if (m) return { pct: +m[1], num: +m[2], den: +m[3] };
+  m = String(v).match(/^(\d+) \/ (\d+)$/);
+  if (m) return { parts: [+m[1], +m[2]] };
+  return null;
+}
+const runTime = (id) => { const m = id.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d)-(\d\d)/); if (!m) return id; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])); return `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })}, ${m[4]}:${m[5]} UTC`; };
+
+const KPIS = [
+  { key: 'Pass (all checks)', label: 'Pass, all checks', icon: 'check', better: 'up' },
+  { key: 'Outcome accuracy', label: 'Outcome accuracy', icon: 'target', better: 'up' },
+  { key: 'No disclosure before verification (rule)', label: 'No disclosure before verify', icon: 'shield', better: 'up' },
+  { key: 'Hung up without a spoken goodbye', label: 'Silent hang-ups', icon: 'phoneoff', better: 'down' },
+  { key: 'Promise-to-pay date exact', label: 'Promise date exact', icon: 'calendar', better: 'up' },
+  { key: 'Text first-token ms (median / p90)', part: 0, label: 'Text latency, median', icon: 'clock', better: 'down', unit: 'ms' },
+  { key: 'Text first-token ms (median / p90)', part: 1, label: 'Text latency, p90', icon: 'clock', better: 'down', unit: 'ms' },
+  { key: 'Tone 1-5 (judge, avg)', label: 'Tone, judge', icon: 'star', better: 'up', unit: '/ 5' },
+];
+// Trust levels as written in docs/RESULTS.md. Metrics it does not rate say so.
+const TRUST = [
+  [/^Pass/, 'mixed', 'Mixed', 'Rules plus judge flags in one number.'],
+  [/^Outcome accuracy|^Promise-to-pay/, 'high', 'High', 'Exact match on the record. The record comes from tool state.'],
+  [/\(rule\)/, 'high', 'High', 'Word match. Good recall, some false positives. Misses paraphrases.'],
+  [/^Hung up|digits or symbols/, 'high', 'High', 'Plain rules on the transcript.'],
+  [/^Tone|^Naturalness/, 'low', 'Low', 'Saturated near 5 on every run.'],
+  [/\(judge\)/, 'medium', 'Medium', 'Never fired, so recall is unproven.'],
+  [/first-token/, 'low', 'Low', 'Model think time only. No VAD, audio or network.'],
+];
+const trustOf = (k) => TRUST.find(([re]) => re.test(k)) || [null, 'none', 'Not rated', 'Not rated in RESULTS.md.'];
+
+let summaries = [], cur = null, curRuns = null;
+const base = () => summaries[0];
+
+function kpiValue(s, k) {
+  const p = parse(s?.metrics?.[k.key]);
+  if (!p) return null;
+  if (k.part != null) return p.parts ? p.parts[k.part] : null;
+  return p.pct ?? p.val ?? null;
+}
+function fmtKpi(s, k) {
+  const p = parse(s?.metrics?.[k.key]);
+  if (!p) return null;
+  if (k.part != null) return p.parts ? `${p.parts[k.part]}<small>${k.unit}</small>` : null;
+  if (p.pct != null) return `${p.pct}%<small>${p.num}/${p.den}</small>`;
+  return `${p.val}<small>${k.unit || ''}</small>`;
+}
+function deltaChip(k) {
+  if (cur === base()) return '<span class="delta">Baseline run</span>';
+  const a = kpiValue(base(), k), b = kpiValue(cur, k);
+  if (a == null) return '<span class="delta">Run 1: n/a</span>';
+  if (b == null) return '';
+  const d = +(b - a).toFixed(2);
+  const unit = parse(cur.metrics[k.key])?.pct != null ? ' pts' : k.unit === 'ms' ? ' ms' : '';
+  const good = d === 0 ? '' : (d > 0) === (k.better === 'up') ? 'good' : 'bad';
+  return `<span class="delta ${good}">${d > 0 ? '+' : ''}${d}${unit} vs run 1</span>`;
+}
+
+function renderKpis() {
+  $('#kpis').innerHTML = KPIS.map((k) => {
+    const v = fmtKpi(cur, k);
+    return `<div class="kpi"><div class="top">${icon(k.icon)}${esc(k.label)}</div>
+      <div class="val ${v ? '' : 'na'}">${v || 'n/a'}</div>${deltaChip(k)}</div>`;
+  }).join('');
+}
+
+function renderHero() {
+  const i = summaries.indexOf(cur);
+  $('#hero-title').textContent = `Run ${i + 1}: ${cur.scenarios} scenarios, ${cur.repeats} times each, ${cur.runs} calls`;
+  $('#hero-sub').textContent = `The real agent talks to an LLM playing the borrower. Rules check the outcome record and the transcript. An LLM judge checks tone and policy.`;
+  $('#run-meta').innerHTML = [
+    `${icon('clock')}${esc(runTime(cur.run_id))}`, `agent <code>${esc(cur.agent_model)}</code>`,
+    `borrower <code>${esc(cur.sim_model)}</code>`, `judge <code>${esc(cur.judge_model)}</code>`,
+    `report <code>results/${esc(cur.run_id)}/report.md</code>`,
+  ].map((x) => `<span class="pill">${x}</span>`).join('');
+  $('#th-sel').textContent = `Run ${i + 1}`;
+}
+
+// ---------- trend chart ----------
+function renderTrend() {
+  const svg = $('#trend'), W = 720, H = 250, L = 90, R = 70, T = 34, B = 50;
+  const n = summaries.length, xs = (i) => n === 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (n - 1), y = (v) => T + (1 - v / 100) * (H - T - B);
+  const pass = summaries.map((s) => parse(s.metrics['Pass (all checks)'])?.pct ?? null);
+  const silent = summaries.map((s) => parse(s.metrics['Hung up without a spoken goodbye'])?.pct ?? null);
+  const sel = summaries.indexOf(cur);
+  const bw = n > 1 ? (W - L - R) / (n - 1) * 0.6 : 120;
+  let out = `<rect class="selband" x="${xs(sel) - bw / 2}" y="${T - 14}" width="${bw}" height="${H - T - B + 28}" rx="8"/>`;
+  for (const g of [0, 25, 50, 75, 100]) out += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}"/><text class="axl" x="${L - 30}" y="${y(g) + 4}" text-anchor="end">${g}%</text>`;
+  const line = (vals, cls) => { let d = ''; vals.forEach((v, i) => { if (v == null) return; d += `${d && vals[i - 1] != null ? 'L' : 'M'}${xs(i)},${y(v)}`; }); return d ? `<path class="${cls}" d="${d}"/>` : ''; };
+  out += line(pass, 'l-pass') + line(silent, 'l-silent');
+  summaries.forEach((s, i) => {
+    if (pass[i] != null) out += `<circle class="p-pass" cx="${xs(i)}" cy="${y(pass[i])}" r="5"/><text class="v" x="${xs(i)}" y="${y(pass[i]) - 11}" text-anchor="middle">${pass[i]}%</text>`;
+    if (silent[i] != null) out += `<circle class="p-silent" cx="${xs(i)}" cy="${y(silent[i])}" r="5"/><text class="v silent" x="${xs(i)}" y="${y(silent[i]) - 11}" text-anchor="middle">${silent[i]}%</text>`;
+    else out += `<text class="na" x="${xs(i)}" y="${y(0) - 8}" text-anchor="middle">silent: n/a</text>`;
+    out += `<text class="runl ${i === sel ? 'sel' : ''}" x="${xs(i)}" y="${H - B + 22}" text-anchor="middle">Run ${i + 1}${i === 0 ? ' (baseline)' : ''}</text>`;
+    out += `<text class="axl" x="${xs(i)}" y="${H - B + 38}" text-anchor="middle">${esc(runTime(s.run_id))}</text>`;
+  });
+  svg.innerHTML = out;
+}
+
+// ---------- heatmap ----------
+const failReasons = (r, exp) => [
+  ...r.misses,
+  ...(r.silent_end ? ['Hung up without a spoken goodbye'] : []),
+  ...r.disclosure.map((d) => `Disclosed "${d.term}" before verification`),
+  ...(r.judge?.threat_or_pressure ? ['Judge: threat or pressure'] : []),
+  ...(r.judge?.false_promise ? ['Judge: false promise'] : []),
+  ...(exp?.max_agent_turns && r.agent_turns > exp.max_agent_turns ? [`${r.agent_turns} agent turns, limit ${exp.max_agent_turns}`] : []),
+];
+
+function renderHeat() {
+  const { runs, scenarios } = curRuns;
+  const ids = [...new Set([...Object.keys(scenarios).filter((id) => runs.some((r) => r.scenario === id)), ...runs.map((r) => r.scenario)])];
+  const reps = Math.max(1, ...runs.map((r) => r.rep + 1));
+  const heat = $('#heat');
+  heat.style.setProperty('--reps', reps);
+  let html = `<span class="hh">Scenario</span>${Array.from({ length: reps }, (_, i) => `<span class="hh">#${i}</span>`).join('')}<span class="hh whyh">Failure reasons</span>`;
+  for (const id of ids) {
+    const rs = runs.filter((r) => r.scenario === id);
+    const sc = scenarios[id] || {};
+    const passN = rs.filter((r) => r.pass).length;
+    html += `<div class="sc">${esc(id)}<span>${esc(sc.who || '')} · ${passN}/${rs.length} pass</span></div>`;
+    for (let k = 0; k < reps; k++) {
+      const r = rs.find((x) => x.rep === k);
+      if (!r) { html += '<span></span>'; continue; }
+      const cls = r.error ? 'err' : r.pass ? 'pass' : 'fail';
+      const lbl = `${id} #${k}: ${r.error ? 'crashed' : r.pass ? 'pass' : 'fail'}, outcome ${r.record?.outcome || 'none'}`;
+      html += `<button type="button" class="tile ${cls}" data-i="${runs.indexOf(r)}" aria-label="${esc(lbl)}" title="${esc(lbl)}">${icon(r.pass ? 'check' : 'x')}#${k}</button>`;
+    }
+    const why = [...new Set(rs.filter((r) => !r.pass && !r.error).flatMap((r) => failReasons(r, sc.expect)))];
+    html += `<div class="why">${why.length ? esc(why.join('; ')) : passN < rs.length ? 'Failed, reason not recorded' : `Expected <b>${esc((sc.expect && [].concat(sc.expect.outcome).join(' or ')) || '')}</b>, all pass`}</div>`;
+  }
+  heat.innerHTML = html;
+}
+$('#heat').addEventListener('click', (e) => { const t = e.target.closest('.tile'); if (t) openDrawer(curRuns.runs[+t.dataset.i], t); });
+
+// ---------- drawer ----------
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function expText(k, v) {
+  if (k === 'promise_to_pay_date' && v && typeof v === 'object') return v.next_weekday != null ? `next ${DAYS[v.next_weekday]}` : v.first_of_next_month ? 'first of next month' : JSON.stringify(v);
+  if (k === 'callback_contains') return `contains ${[].concat(v).map((x) => `"${x}"`).join(' or ')}`;
+  if (k === 'outcome') return [].concat(v).join(' or ');
+  return JSON.stringify(v);
+}
+let lastTile = null;
+function openDrawer(r, tile) {
+  lastTile = tile;
+  const sc = curRuns.scenarios[r.scenario] || {}, exp = sc.expect || {};
+  $('#d-title').textContent = `${r.scenario} #${r.rep}`;
+  $('#d-tag').innerHTML = r.error ? '<span class="tag fail">Crashed</span>' : r.pass ? `<span class="tag pass">${icon('check')}Pass</span>` : `<span class="tag fail">${icon('x')}Fail</span>`;
+  if (r.error) { $('#d-body').innerHTML = `<p>${esc(r.error)}</p>`; return show(); }
+  const rec = r.record || {};
+  const missKeys = new Set(r.misses.map((m) => m.split(':')[0]));
+  const rows = Object.entries(exp).filter(([k]) => k !== 'max_agent_turns').map(([k, v]) => {
+    const got = k === 'callback_contains' ? rec.callback_time : rec[k];
+    return `<tr class="${missKeys.has(k) ? 'miss' : ''}"><td>${esc(k)}</td><td>${esc(expText(k, v))}</td><td>${esc(typeof got === 'string' ? got : JSON.stringify(got ?? null))}</td></tr>`;
+  }).join('');
+  const reasons = failReasons(r, exp);
+  const j = r.judge || {};
+  const turns = r.turns.map((t) => {
+    if (t.role === 'tool') return `<div class="bub tool">${icon('zap')} <b>${esc(t.name)}</b> ${esc(t.args)}<br>→ ${esc(t.result)}</div>`;
+    return `<div class="bub ${t.role === 'agent' ? 'agent' : 'caller'}"><span class="who">${t.role === 'agent' ? 'Agent' : 'Caller'}</span>${esc(t.text)}</div>`;
+  }).join('');
+  $('#d-body').innerHTML = `
+    ${sc.persona ? `<div><h3>Caller script (${esc(sc.who)})</h3><p class="persona">${esc(sc.persona)}</p></div>` : ''}
+    <div><h3>${reasons.length ? 'Why it failed' : 'Checks'}</h3><ul class="reasons">${reasons.length ? reasons.map((x) => `<li>${icon('alert')}${esc(x)}</li>`).join('') : `<li class="info">${icon('check')}Every check passed.</li>`}
+      ${r.silent_end == null ? `<li class="info">${icon('info')}Silent end: n/a. This run predates that rule.</li>` : ''}
+      <li class="info">${icon('info')}Ended by: ${esc(r.end)}. ${r.agent_turns} agent turns${r.avg_words != null ? `, ${r.avg_words} words per turn` : ''}.${r.style.length ? ` Style flags: ${esc([...new Set(r.style)].join(', '))}.` : ''}</li>
+      ${r.latencies.length ? `<li class="info">${icon('clock')}Text first-token ms per reply: ${esc(r.latencies.join(', '))}</li>` : ''}</ul></div>
+    <div><h3>Outcome record vs expected</h3><div class="scroll"><table class="cmp"><thead><tr><th>Field</th><th>Expected</th><th>Recorded</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${rec.notes ? `<p class="persona" style="margin-top:8px">${esc(rec.notes)}</p>` : ''}</div>
+    <div><h3>Judge</h3>${j.error ? `<p class="hint">Judge error: ${esc(j.error)}</p>` : `<div class="scores">
+      <span class="pill">tone <b>${esc(j.tone)}</b>/5</span><span class="pill">naturalness <b>${esc(j.naturalness)}</b>/5</span>
+      ${['threat_or_pressure', 'false_promise', 'off_topic_drift', 'disclosed_before_verification'].map((f) => `<span class="pill" style="${j[f] ? 'background:var(--bad-bg);color:var(--bad)' : ''}">${f.replace(/_/g, ' ')}: ${j[f] ? 'yes' : 'no'}</span>`).join('')}
+      <span class="pill">ended gracefully: ${j.ended_gracefully ? 'yes' : 'no'}</span></div>
+      ${(j.issues || []).length ? `<ul class="reasons" style="margin-top:8px">${j.issues.map((x) => `<li class="info">${icon('msg')}"${esc(x.quote)}" ${esc(x.problem)}</li>`).join('')}</ul>` : '<p class="hint">The judge raised no issues.</p>'}`}</div>
+    <div><h3>Transcript</h3><div class="conv">${turns}</div></div>`;
+  show();
+}
+function show() { const d = $('#drawer'); if (!d.open) d.showModal(); $('#d-body').scrollTop = 0; $('#d-close').focus(); }
+$('#d-close').onclick = () => $('#drawer').close();
+$('#drawer').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+$('#drawer').addEventListener('close', () => lastTile?.focus());
+
+// ---------- metric table, notes ----------
+function renderTable() {
+  $('#mbody').innerHTML = Object.keys({ ...base().metrics, ...cur.metrics }).map((k) => {
+    const [, cls, label, why] = trustOf(k);
+    const b = base().metrics[k], c = cur.metrics[k];
+    return `<tr><td>${esc(k)}</td><td class="num"><b>${esc(c ?? 'n/a')}</b></td><td class="num">${esc(b ?? 'n/a')}</td><td><span class="trust ${cls}">${label}</span></td><td class="why">${esc(why)}</td></tr>`;
+  }).join('');
+}
+function renderNotes() {
+  const tones = summaries.map((s) => s.metrics['Tone 1-5 (judge, avg)']).filter((x) => x != null);
+  const judgeFlags = ['No threat or pressure (judge)', 'No false promise (judge)', 'No off-topic drift (judge)'];
+  const neverFired = summaries.every((s) => judgeFlags.every((k) => parse(s.metrics[k])?.pct === 100));
+  const noSilentBase = base().metrics['Hung up without a spoken goodbye'] == null;
+  const notes = [
+    ['Text, not voice', `The agent runs in text mode. ${cur.sim_model} plays the borrower. No audio, barge-in or mishearing is tested.`],
+    ['The judge is saturated', `Tone averaged ${Math.min(...tones)} to ${Math.max(...tones)} out of 5 across ${tones.length} runs.${neverFired ? ' Its threat, false promise and drift flags never fired, so their recall is unproven.' : ''}`],
+    ['Voice latency is not here', 'Latency on this page is text first-token time. Voice latency is measured per call on the Call page.'],
+    ...(noSilentBase ? [['Run 1 predates a rule', 'The silent hang-up check did not exist in run 1, so it shows n/a, not 0.']] : []),
+  ];
+  $('#notes').innerHTML = notes.map(([t, d]) => `<li>${icon('alert')}<span><b>${esc(t)}</b>${esc(d)}</span></li>`).join('');
+}
+
+async function selectRun(id) {
+  cur = summaries.find((s) => s.run_id === id);
+  renderHero(); renderKpis(); renderTrend(); renderTable(); renderNotes();
+  $('#heat').innerHTML = '<p class="loading">Loading calls.</p>';
+  try { curRuns = await getJSON(`/api/evals/${encodeURIComponent(id)}/runs`); if (cur.run_id === id) renderHeat(); }
+  catch (e) { $('#heat').innerHTML = `<div class="empty-state">${icon('inbox')}Could not load calls: ${esc(e.message)}</div>`; }
+}
+
+try {
+  summaries = await getJSON('/api/evals');
+  if (!summaries.length) {
+    $('#hero-sub').textContent = 'No eval runs yet. Run npm run eval, then reload.';
+    document.querySelectorAll('main > section:not(.hero)').forEach((s) => { s.hidden = true; });
+  } else {
+    $('#run').innerHTML = summaries.map((s, i) => `<option value="${esc(s.run_id)}">Run ${i + 1}${i === 0 ? ' (baseline)' : ''}: ${esc(runTime(s.run_id))}</option>`).join('');
+    $('#run').value = summaries.at(-1).run_id; $('#run').disabled = false;
+    $('#run').onchange = (e) => selectRun(e.target.value);
+    await selectRun(summaries.at(-1).run_id);
+  }
+} catch (e) { showErr(`Could not load eval runs: ${e.message}`); }
+</script>
+</body>
+</html>

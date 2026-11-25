@@ -38,3 +38,30 @@ pre { background: var(--soft); color: var(--ink); padding: 10px; border-radius: 
 table { border-collapse: collapse; width: 100%; font-size: 12px; } td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 th { color: var(--muted); font-weight: 600; }
 code { background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+
+/* ---------- added: shared site chrome, icons, stat chips (all pages) ---------- */
+:root { --accent-soft: #e8eefc; --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08); --radius: 12px; }
+@media (prefers-color-scheme: dark) { :root { --accent-soft: #1c2847; --shadow: 0 1px 2px rgba(0, 0, 0, .4); } }
+.ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
+.ico.lg { width: 20px; height: 20px; }
+header.site { position: sticky; top: 0; z-index: 20; padding-top: calc(12px + env(safe-area-inset-top, 0px)); padding-bottom: 12px; }
+header.site h1 { display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.2; }
+header.site h1 small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.logo { width: 30px; height: 30px; flex: none; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.logo .ico { width: 18px; height: 18px; vertical-align: 0; }
+header.site nav { display: flex; flex-wrap: wrap; gap: 4px; }
+header.site nav a { margin-left: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 99px; color: var(--muted); font-weight: 500; text-decoration: none; }
+header.site nav a:hover { color: var(--ink); background: var(--soft); text-decoration: none; }
+header.site nav a[aria-current="page"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+@media (max-width: 480px) { header.site { padding-inline: 16px; } header.site nav a { padding: 6px 9px; } }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.statchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.statchip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); color: var(--muted); font-size: 12.5px; text-decoration: none; font-variant-numeric: tabular-nums; }
+.statchip b { color: var(--ink); font-size: 14px; }
+.statchip .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); color: var(--ok); }
+.statchip .dot .ico { width: 14px; height: 14px; vertical-align: 0; }
+a.statchip:hover { border-color: var(--accent); color: var(--ink); }
+.empty-state { display: grid; justify-items: center; gap: 6px; text-align: center; color: var(--muted); padding: 18px 12px; font-size: 13px; }
+[hidden] { display: none !important; }
+.empty-state .ico { width: 28px; height: 28px; stroke-width: 1.6; opacity: .7; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

@@ -59,17 +59,47 @@ const routes = {
     .sort((a, b) => b.started_at.localeCompare(a.started_at)),
 
   'GET /api/evals/latest': () => {
-    const dir = join(ROOT, 'results');
-    const runs = existsSync(dir) ? readdirSync(dir).filter((d) => existsSync(join(dir, d, 'summary.json'))).sort() : [];
-    return runs.length ? JSON.parse(readFileSync(join(dir, runs.at(-1), 'summary.json'), 'utf8')) : null;
+    const runs = evalRunIds();
+    return runs.length ? readSummary(runs.at(-1)) : null;
   },
+
+  // All eval runs, oldest first.
+  'GET /api/evals': () => evalRunIds().map(readSummary),
 };
+
+// ---------- eval results (read-only) ----------
+const RESULTS = join(ROOT, 'results');
+const evalRunIds = () => existsSync(RESULTS) ? readdirSync(RESULTS).filter((d) => existsSync(join(RESULTS, d, 'summary.json'))).sort() : [];
+const readSummary = (id) => JSON.parse(readFileSync(join(RESULTS, id, 'summary.json'), 'utf8'));
+const clip = (v, n = 300) => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s && s.length > n ? s.slice(0, n) + '...' : s; };
+
+// One run's calls, trimmed to what the evals page shows. run_id must be a folder from the list.
+function evalRuns(id) {
+  if (!evalRunIds().includes(id)) throw Object.assign(new Error('unknown run'), { status: 404 });
+  const file = join(RESULTS, id, 'runs.jsonl');
+  if (!existsSync(file)) throw Object.assign(new Error('no runs.jsonl for this run'), { status: 404 });
+  const scenarios = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'evals/scenarios.json'), 'utf8'))
+    .map((s) => [s.id, { borrower: s.borrower, who: s.who, persona: s.persona, expect: s.expect }]));
+  const runs = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).map((r) => r.error
+    ? { scenario: r.scenario, rep: r.rep, error: r.error }
+    : {
+      scenario: r.scenario, rep: r.rep, borrower: r.borrower, end: r.end, pass: r.pass, record: r.record,
+      misses: r.outcome_check?.misses || [],
+      disclosure: (r.disclosure || []).map((d) => ({ term: d.term, text: d.text })),
+      silent_end: r.silent_end ?? null, // null: the run predates the silent-end rule
+      style: (r.style?.issues || []).map((i) => i.kind), avg_words: r.style?.avg_words ?? null,
+      judge: r.judge, agent_turns: r.agent_turns, latencies: r.latencies || [],
+      turns: (r.turns || []).map((t) => t.role === 'tool' ? { role: 'tool', name: t.name, args: clip(t.args), result: clip(t.result) } : { role: t.role, text: t.text }),
+    }).sort((a, b) => a.scenario.localeCompare(b.scenario) || a.rep - b.rep);
+  return { run_id: id, scenarios, runs };
+}
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
 
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  const handler = routes[`${req.method} ${url.pathname}`];
+  const evalMatch = req.method === 'GET' && url.pathname.match(/^\/api\/evals\/([^/]+)\/runs$/);
+  const handler = evalMatch ? () => evalRuns(evalMatch[1]) : routes[`${req.method} ${url.pathname}`];
   if (handler) {
     try {
       let body = '';
@@ -82,7 +112,7 @@ createServer(async (req, res) => {
     }
     return;
   }
-  const path = url.pathname === '/' ? '/index.html' : url.pathname === '/how-it-works' ? '/how-it-works.html' : url.pathname;
+  const path = url.pathname === '/' ? '/index.html' : url.pathname === '/how-it-works' ? '/how-it-works.html' : url.pathname === '/evals' ? '/evals.html' : url.pathname;
   const file = join(ROOT, 'public', path.replace(/\.\.+/g, ''));
   if (!existsSync(file)) return res.writeHead(404).end('not found');
   res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream' }).end(readFileSync(file));
