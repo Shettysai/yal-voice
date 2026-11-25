@@ -1,0 +1,10 @@
+[
+  { "id": "B001", "name": "Rahul Sharma", "dob": "1990-03-14", "phone_last4": "4821", "loan_type": "personal loan", "loan_type_hi": "पर्सनल लोन", "emi_amount": 12500, "due_offset_days": 4, "missed_emis": 0, "language": "en" },
+  { "id": "B002", "name": "Priya Nair", "dob": "1987-11-02", "phone_last4": "7310", "loan_type": "home loan", "loan_type_hi": "होम लोन", "emi_amount": 38750, "due_offset_days": 2, "missed_emis": 0, "language": "en" },
+  { "id": "B003", "name": "Arjun Mehta", "dob": "1995-07-21", "phone_last4": "0093", "loan_type": "two-wheeler loan", "loan_type_hi": "टू-व्हीलर लोन", "emi_amount": 3200, "due_offset_days": -12, "missed_emis": 1, "language": "en" },
+  { "id": "B004", "name": "Sunita Devi", "dob": "1979-01-05", "phone_last4": "5567", "loan_type": "consumer durable loan", "loan_type_hi": "कंज़्यूमर लोन", "emi_amount": 2499, "due_offset_days": -5, "missed_emis": 1, "language": "hi" },
+  { "id": "B005", "name": "Vikram Singh", "dob": "1984-09-30", "phone_last4": "2246", "loan_type": "car loan", "loan_type_hi": "कार लोन", "emi_amount": 18900, "due_offset_days": -40, "missed_emis": 2, "language": "en" },
+  { "id": "B006", "name": "Fatima Shaikh", "dob": "1998-05-17", "phone_last4": "8804", "loan_type": "education loan", "loan_type_hi": "एजुकेशन लोन", "emi_amount": 7650, "due_offset_days": 6, "missed_emis": 0, "language": "en", "payment_link_fails_once": true },
+  { "id": "B007", "name": "Karthik Reddy", "dob": "1981-12-08", "phone_last4": "1170", "loan_type": "business loan", "loan_type_hi": "बिज़नेस लोन", "emi_amount": 125000, "due_offset_days": 3, "missed_emis": 0, "language": "en" },
+  { "id": "B008", "name": "Meena Iyer", "dob": "1992-04-26", "phone_last4": "3359", "loan_type": "personal loan", "loan_type_hi": "पर्सनल लोन", "emi_amount": 9999, "due_offset_days": 0, "missed_emis": 0, "language": "hi" }
+]

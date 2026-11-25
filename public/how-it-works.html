@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it works · Lumen EMI Agent</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root {
+    --surface-2: #f3f5f8; --faint: #9aa3b2; --accent-soft: #e8eefc;
+    --warn: #a86b12; --warn-soft: #fdf5e2; --pass: #1d7f47; --pass-soft: #e5f3ea; --fail: #b8382b; --fail-soft: #fbeceb;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1217; --card: #171b22; --ink: #e6e9ef; --muted: #a1a9b7; --line: #2b313c; --accent: #82a6ff; --agent: #1c2740; --caller: #1d2a1f;
+      --surface-2: #1f242d; --faint: #626b7b; --accent-soft: #1c2847; --warn: #e3b453; --warn-soft: #2d2615; --pass: #55c78f; --pass-soft: #15281e; --fail: #f07366; --fail-soft: #2e1a18;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1217; --card: #171b22; --ink: #e6e9ef; --muted: #a1a9b7; --line: #2b313c; --accent: #82a6ff; --agent: #1c2740; --caller: #1d2a1f;
+    --surface-2: #1f242d; --faint: #626b7b; --accent-soft: #1c2847; --warn: #e3b453; --warn-soft: #2d2615; --pass: #55c78f; --pass-soft: #15281e; --fail: #f07366; --fail-soft: #2e1a18;
+    color-scheme: dark;
+  }
+  code { background: var(--surface-2); font-family: var(--mono); font-size: 12.5px; }
+
+  .page { max-width: 1120px; margin: 0 auto; padding: 20px 20px 48px; display: grid; gap: 18px; }
+  @media (max-width: 480px) { .page { padding-inline: 16px; } }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  .hero { display: grid; gap: 8px; padding: 6px 0 2px; }
+  .hero h2 { font-size: 24px; margin: 0; line-height: 1.25; }
+  .hero p { margin: 0; color: var(--muted); font-size: 15px; max-width: 72ch; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; }
+  .stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12.5px; }
+
+  .toc { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px; }
+  .toc a { font-size: 13px; font-weight: 500; color: var(--muted); padding: 5px 11px; border-radius: 999px; border: 1px solid transparent; text-decoration: none; }
+  .toc a:hover, .toc a:focus-visible { color: var(--ink); border-color: var(--line); outline: none; }
+  .toc a.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .board { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; scroll-margin-top: 60px; min-width: 0; }
+  .board-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+  .bh { display: grid; gap: 4px; }
+  .bh h2 { font-size: 18px; margin: 0; }
+  .bh p { margin: 0; color: var(--muted); font-size: 14px; max-width: 74ch; }
+  .controls { display: flex; gap: 6px; align-items: center; }
+  .controls button { width: auto; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .controls button:hover { border-color: var(--faint); }
+  .controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .count { font: 500 12px var(--mono); color: var(--muted); min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  .scroll svg { display: block; width: 100%; min-width: 880px; height: auto; }
+  .note { font-size: 13px; color: var(--muted); margin: 0; }
+  h3.sub { font-size: 14px; margin: 6px 0 0; }
+
+  /* SVG vocabulary */
+  svg text { font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+  .bx { fill: var(--card); stroke: var(--faint); stroke-width: 1.2; }
+  .bx.core { fill: var(--accent-soft); stroke: var(--accent); }
+  .bx.gate { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.6; }
+  .bx.ext { fill: var(--surface-2); stroke: var(--faint); }
+  .bx.file { fill: var(--card); stroke: var(--faint); stroke-dasharray: 4 4; }
+  .bx.esc { fill: var(--warn-soft); stroke: var(--warn); }
+  .bx.key { fill: var(--pass-soft); stroke: var(--pass); }
+  .cont { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.2; }
+  .lane { fill: var(--surface-2); stroke: var(--line); }
+  .lane.model { fill: var(--pass-soft); stroke: var(--pass); stroke-dasharray: 6 5; }
+  .t { fill: var(--ink); font-size: 13.5px; font-weight: 600; }
+  .tm { fill: var(--ink); font: 600 12.5px var(--mono); }
+  .s { fill: var(--muted); font-size: 11.5px; }
+  .sm { fill: var(--muted); font: 11px var(--mono); }
+  .neg { fill: var(--fail); font-size: 11.5px; font-weight: 600; }
+  .posi { fill: var(--pass); font-size: 11.5px; font-weight: 600; }
+  .hd { fill: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .lbl { fill: var(--muted); font-size: 11px; font-weight: 500; paint-order: stroke; stroke: var(--card); stroke-width: 5px; stroke-linejoin: round; }
+  .lbl.on2 { stroke: var(--surface-2); }
+  .ar { fill: none; stroke: var(--faint); stroke-width: 1.5; marker-end: url(#ah); }
+  .ar.two { marker-start: url(#ahs); }
+  .ar.core { stroke: var(--accent); marker-end: url(#ahc); }
+  .ar.core.two { marker-start: url(#ahcs); }
+  .ar.ok { stroke: var(--pass); marker-end: url(#ahp); }
+  .live { stroke-dasharray: 6 5; animation: dash 1.1s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -22; } }
+  .mk { fill: var(--faint); } .mk.core { fill: var(--accent); } .mk.ok { fill: var(--pass); }
+
+  /* flow */
+  .stage { cursor: pointer; }
+  .stage .bx { transition: fill .25s, stroke .25s, stroke-width .25s; }
+  .stage .num { fill: var(--muted); font: 600 11px var(--mono); }
+  .stage.on .bx { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.2; }
+  .stage.on .bx.gate { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 2.6; }
+  .stage.on .num { fill: var(--accent); }
+  .stage:focus-visible { outline: none; } .stage:focus-visible .bx { stroke-width: 3; }
+  .track { stroke: var(--line); stroke-width: 6; stroke-linecap: round; fill: none; }
+  #runner { fill: var(--accent); transition: transform .6s ease; }
+  .br { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 4 4; transition: stroke .25s; }
+  .br.on { stroke: var(--accent); stroke-width: 1.8; }
+  .pill .bx { transition: fill .25s, stroke .25s; }
+  .pill.on .bx { stroke: var(--accent); stroke-width: 2; }
+  .pill.on .bx.esc { stroke: var(--warn); }
+  .detail { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; background: var(--surface-2); border-radius: 12px; padding: 16px 18px; min-height: 140px; }
+  .detail h3 { margin: 0; font-size: 17px; display: flex; gap: 10px; align-items: baseline; }
+  .detail h3 small { font: 600 12px var(--mono); color: var(--accent); }
+  .detail p { margin: 8px 0 0; max-width: 62ch; font-size: 14px; }
+  .facts { display: grid; gap: 6px; align-content: start; margin: 0; padding: 0; list-style: none; }
+  .facts li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; font: 500 12.5px var(--mono); overflow-wrap: anywhere; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1.5px solid var(--faint); background: var(--card); }
+  .sw.core { background: var(--accent-soft); border-color: var(--accent); }
+  .sw.gate { background: var(--warn-soft); border-color: var(--warn); }
+  .sw.file { border-style: dashed; }
+  .sw.ext { background: var(--surface-2); }
+  .sw.model { background: var(--pass-soft); border-color: var(--pass); border-style: dashed; }
+  .sw.key { background: var(--pass-soft); border-color: var(--pass); }
+
+  /* architecture */
+  .hit { fill: transparent; stroke: transparent; stroke-width: 2.5; cursor: pointer; transition: fill .2s, stroke .2s; }
+  .hit:hover { stroke: var(--faint); }
+  .hit:focus-visible { outline: none; stroke: var(--accent); }
+  .hit.sel { stroke: var(--accent); }
+  .hit.dim { fill: var(--card); fill-opacity: .55; }
+  .comp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; background: var(--surface-2); border-radius: 12px; padding: 16px 18px; }
+  .comp h3 { margin: 0; font-size: 17px; }
+  .comp ul { margin: 6px 0 0; padding-left: 18px; font-size: 14px; }
+  .comp li { margin: 3px 0; }
+  .bl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font: 500 12px var(--mono); border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 3px 10px; }
+  button.chip { width: auto; cursor: pointer; }
+  button.chip:hover, button.chip:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+
+  /* topology callouts and rule cards */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .rule { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: block; font-size: 13px; color: var(--muted); background: var(--card); }
+  .rule b { display: block; margin-bottom: 4px; font-size: 14px; color: var(--ink); }
+  .rule.good { border-color: var(--pass); } .rule.good b { color: var(--pass); }
+  .rule.warn { border-color: var(--warn); } .rule.warn b { color: var(--warn); }
+
+  /* sequence */
+  .lane-head { fill: var(--surface-2); stroke: var(--faint); }
+  .lifeline { stroke: var(--faint); stroke-dasharray: 3 5; }
+  .msg { transition: opacity .3s; }
+  .msg .ln { fill: none; stroke: var(--faint); stroke-width: 1.6; marker-end: url(#ah); }
+  .msg .badge { fill: var(--surface-2); stroke: var(--faint); }
+  .msg .bn { fill: var(--muted); font: 600 11px var(--mono); }
+  .msg .mt { fill: var(--ink); font-size: 12px; font-weight: 500; paint-order: stroke; stroke: var(--card); stroke-width: 6px; stroke-linejoin: round; }
+  .stepping .msg { opacity: .3; }
+  .stepping .msg.on { opacity: 1; }
+  .msg.on .ln { stroke: var(--accent); stroke-width: 2.2; marker-end: url(#ahc); }
+  .msg.on .badge { fill: var(--accent); stroke: var(--accent); }
+  .msg.on .bn { fill: var(--card); }
+  .msg.on .mt { font-weight: 600; }
+  .band { fill: var(--warn-soft); }
+  .seqnote { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; font-size: 14px; min-height: 48px; margin: 0; }
+  .seqnote b { font-family: var(--mono); color: var(--accent); margin-right: 6px; }
+
+  /* latency */
+  .bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 600; }
+  .bar span { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; padding: 0 6px; }
+  .seg-vad { background: #6b7688; color: #fff; }
+  .seg-model { background: var(--accent); color: #fff; }
+  .seg-net { color: var(--ink); background: repeating-linear-gradient(45deg, var(--surface-2), var(--surface-2) 6px, var(--line) 6px, var(--line) 12px); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg-model { color: #0f1217; } }
+  :root[data-theme="dark"] .seg-model { color: #0f1217; }
+  .wave-mic { fill: var(--pass); } .wave-agent { fill: var(--accent); }
+  .mark { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 3 3; }
+  .span { stroke: var(--warn); stroke-width: 2; fill: none; marker-end: url(#ahw); marker-start: url(#ahws); }
+  .mk.warn { fill: var(--warn); }
+
+  /* tables */
+  .tbl { overflow-x: auto; }
+  .tbl table { font-size: 13px; min-width: 560px; }
+  .tbl th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.code { background: var(--pass-soft); color: var(--pass); }
+  .tag.prompt { background: var(--accent-soft); color: var(--accent); }
+  .tag.eval { background: var(--warn-soft); color: var(--warn); }
+  .tag.no { background: var(--fail-soft); color: var(--fail); }
+  .tag.yes { background: var(--pass-soft); color: var(--pass); }
+  .muted { color: var(--muted); }
+
+  /* eval loop */
+  .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; counter-reset: st; }
+  .steps div { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--card); font-size: 13px; color: var(--muted); position: relative; }
+  .steps div b { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+  .steps code { overflow-wrap: anywhere; word-break: break-word; }
+  .steps div.j { border-color: var(--warn); background: var(--warn-soft); }
+  .bar-g .b { transition: height .3s; }
+  .b.r1, .b.r2, .b.r3 { fill: var(--faint); } .b.r4 { fill: var(--accent); }
+  .b.bad.r4 { fill: var(--warn); }
+  .val { fill: var(--ink); font: 600 11.5px var(--mono); }
+  .axis { stroke: var(--line); }
+
+  @media (max-width: 860px) { .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .detail, .comp { grid-template-columns: 1fr; }
+    .board { padding: 16px; }
+  }
+  @media (max-width: 480px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero h2 { font-size: 20px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .live { animation: none; }
+    #runner, .stage .bx, .msg, .br, .pill .bx { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lumen Finance · EMI reminder agent</h1>
+  <nav><a href="/">Call</a><a href="/how-it-works">How it works</a></nav>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ahs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk" d="M10,0 L0,5 L10,10 z"/></marker>
+    <marker id="ahc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk core" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ahcs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk core" d="M10,0 L0,5 L10,10 z"/></marker>
+    <marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk ok" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk warn" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ahws" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk warn" d="M10,0 L0,5 L10,10 z"/></marker>
+  </defs>
+</svg>
+
+<main class="page">
+
+<section class="hero">
+  <div class="eyebrow">How it works</div>
+  <h2>A voice agent that reminds borrowers about EMIs</h2>
+  <p>The browser talks to OpenAI Realtime over WebRTC. A small Node server mints the session key and runs the tools. Code owns the facts and the gates. The model owns the conversation.</p>
+  <div class="stats">
+    <div class="stat"><b>49/54</b><span>eval calls pass every check, final run</span></div>
+    <div class="stat"><b>98%</b><span>outcome records correct, up from 87%</span></div>
+    <div class="stat"><b>4/54</b><span>silent hang-ups, down from 23/54</span></div>
+    <div class="stat"><b>0</b><span>loan details shared before verification, final run</span></div>
+  </div>
+</section>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#flow">Call flow</a><a href="#data">Data flow</a><a href="#architecture">Architecture</a><a href="#topology">Topology</a>
+  <a href="#sequence">One turn</a><a href="#latency">Latency</a><a href="#guardrails">Guardrails</a><a href="#evals">Evals</a>
+</nav>
+
+<!-- 1. CALL FLOW -->
+<section class="board" id="flow">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">1 · Call flow</div>
+      <h2>Six steps, one gate</h2>
+      <p>The agent knows only a name when it dials. Nothing about the loan is said until verification passes. Click a step or press Play.</p>
+    </div>
+    <div class="controls">
+      <button type="button" aria-label="Previous step" data-flow="-1">←</button>
+      <button type="button" id="flowPlay">Pause</button>
+      <button type="button" aria-label="Next step" data-flow="1">→</button>
+      <span class="count" id="flowCount">1 / 6</span>
+    </div>
+  </div>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 290" role="img" aria-label="Call flow: greet, verify, remind, listen, act, close, with branch outcomes">
+      <path class="track" d="M105,130 H1005"/>
+      <g id="stages">
+        <g class="stage on" tabindex="0" role="button" aria-label="Step 1: Greet" data-i="0"><rect class="bx" x="30" y="30" width="150" height="76" rx="10"/><text class="num" x="44" y="50">1</text><text class="t" x="105" y="70" text-anchor="middle">Greet</text><text class="s" x="105" y="90" text-anchor="middle">Name and language only</text></g>
+        <g class="stage" tabindex="0" role="button" aria-label="Step 2: Verify" data-i="1"><rect class="bx gate" x="210" y="30" width="150" height="76" rx="10"/><text class="num" x="224" y="50">2</text><text class="t" x="285" y="70" text-anchor="middle">Verify (gate)</text><text class="s" x="285" y="90" text-anchor="middle">DOB or last 4 digits</text></g>
+        <g class="stage" tabindex="0" role="button" aria-label="Step 3: Remind" data-i="2"><rect class="bx" x="390" y="30" width="150" height="76" rx="10"/><text class="num" x="404" y="50">3</text><text class="t" x="465" y="70" text-anchor="middle">Remind</text><text class="s" x="465" y="90" text-anchor="middle">Amount and date, in words</text></g>
+        <g class="stage" tabindex="0" role="button" aria-label="Step 4: Listen" data-i="3"><rect class="bx" x="570" y="30" width="150" height="76" rx="10"/><text class="num" x="584" y="50">4</text><text class="t" x="645" y="70" text-anchor="middle">Listen</text><text class="s" x="645" y="90" text-anchor="middle">What will they do?</text></g>
+        <g class="stage" tabindex="0" role="button" aria-label="Step 5: Act" data-i="4"><rect class="bx" x="750" y="30" width="150" height="76" rx="10"/><text class="num" x="764" y="50">5</text><text class="t" x="825" y="70" text-anchor="middle">Act</text><text class="s" x="825" y="90" text-anchor="middle">Link, date or escalate</text></g>
+        <g class="stage" tabindex="0" role="button" aria-label="Step 6: Close" data-i="5"><rect class="bx" x="930" y="30" width="150" height="76" rx="10"/><text class="num" x="944" y="50">6</text><text class="t" x="1005" y="70" text-anchor="middle">Close</text><text class="s" x="1005" y="90" text-anchor="middle">Goodbye, then record</text></g>
+      </g>
+      <path class="ar" d="M183,68 H207"/><path class="ar" d="M363,68 H387"/><path class="ar" d="M543,68 H567"/><path class="ar" d="M723,68 H747"/><path class="ar" d="M903,68 H927"/>
+      <circle id="runner" cx="105" cy="130" r="7"/>
+      <!-- branches -->
+      <path class="br" data-from="0" d="M105,106 C105,160 70,150 70,190"/>
+      <path class="br" data-from="0" d="M105,106 C105,160 178,150 178,190"/>
+      <path class="br" data-from="0" d="M105,106 C105,160 286,150 286,190"/>
+      <path class="br" data-from="0" d="M105,106 C105,160 394,150 394,190"/>
+      <path class="br" data-from="1" d="M285,106 C285,160 502,150 502,190"/>
+      <path class="br" data-from="3 4" d="M645,106 C645,160 610,150 610,190"/>
+      <path class="br" data-from="3 4" d="M645,106 C645,160 718,150 718,190"/>
+      <path class="br" data-from="3 4" d="M645,106 C645,160 826,150 826,190"/>
+      <path class="br" data-from="3 4" d="M645,106 C645,160 934,150 934,190"/>
+      <path class="br" data-from="3 4" d="M645,106 C645,160 1042,150 1042,190"/>
+      <g class="pill" data-from="0"><rect class="bx" x="20" y="190" width="100" height="44" rx="8"/><text class="t" x="70" y="209" text-anchor="middle" font-size="11">Not them</text><text class="s" x="70" y="225" text-anchor="middle">apologise</text></g>
+      <g class="pill" data-from="0"><rect class="bx" x="128" y="190" width="100" height="44" rx="8"/><text class="t" x="178" y="209" text-anchor="middle" font-size="11">Relative</text><text class="s" x="178" y="225" text-anchor="middle">personal matter</text></g>
+      <g class="pill" data-from="0"><rect class="bx" x="236" y="190" width="100" height="44" rx="8"/><text class="t" x="286" y="209" text-anchor="middle" font-size="11">Call me later</text><text class="s" x="286" y="225" text-anchor="middle">ask a time</text></g>
+      <g class="pill" data-from="0"><rect class="bx" x="344" y="190" width="100" height="44" rx="8"/><text class="t" x="394" y="209" text-anchor="middle" font-size="11">Stop calling</text><text class="s" x="394" y="225" text-anchor="middle">end at once</text></g>
+      <g class="pill" data-from="1"><rect class="bx gate" x="452" y="190" width="100" height="44" rx="8"/><text class="t" x="502" y="209" text-anchor="middle" font-size="11">3 misses</text><text class="s" x="502" y="225" text-anchor="middle">locked</text></g>
+      <g class="pill" data-from="3 4"><rect class="bx" x="560" y="190" width="100" height="44" rx="8"/><text class="t" x="610" y="209" text-anchor="middle" font-size="11">Pays on time</text><text class="s" x="610" y="225" text-anchor="middle">offer link</text></g>
+      <g class="pill" data-from="3 4"><rect class="bx" x="668" y="190" width="100" height="44" rx="8"/><text class="t" x="718" y="209" text-anchor="middle" font-size="11">Already paid</text><text class="s" x="718" y="225" text-anchor="middle">thank, no link</text></g>
+      <g class="pill" data-from="3 4"><rect class="bx" x="776" y="190" width="100" height="44" rx="8"/><text class="t" x="826" y="209" text-anchor="middle" font-size="11">Later date</text><text class="s" x="826" y="225" text-anchor="middle">exact date, link</text></g>
+      <g class="pill" data-from="3 4"><rect class="bx esc" x="884" y="190" width="100" height="44" rx="8"/><text class="t" x="934" y="209" text-anchor="middle" font-size="11">Hardship</text><text class="s" x="934" y="225" text-anchor="middle">escalate</text></g>
+      <g class="pill" data-from="3 4"><rect class="bx esc" x="992" y="190" width="100" height="44" rx="8"/><text class="t" x="1042" y="209" text-anchor="middle" font-size="11">Dispute</text><text class="s" x="1042" y="225" text-anchor="middle">escalate</text></g>
+      <text class="hd" x="232" y="262" text-anchor="middle">Early exits</text>
+      <text class="hd" x="826" y="262" text-anchor="middle">What the borrower says</text>
+      <text class="s" x="560" y="282" text-anchor="middle">Every path ends at Close: a spoken goodbye, then record_outcome, then end_call.</text>
+    </svg>
+  </div>
+  <div class="detail" aria-live="polite">
+    <div><h3><small id="flowNum">Step 1</small><span id="flowTitle">Greet</span></h3><p id="flowText"></p></div>
+    <ul class="facts" id="flowFacts"></ul>
+  </div>
+</section>
+
+<!-- 2. DATA FLOW -->
+<section class="board" id="data">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">2 · Data architecture</div>
+      <h2>Where each piece of data lives and moves</h2>
+      <p>The green lane is everything the model can see. DOB, phone digits and raw amounts never enter it. The outcome record is built from server state, not from what the model claims.</p>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i class="sw file"></i>file on disk</span><span><i class="sw"></i>server code or state</span><span><i class="sw core"></i>enters model context</span><span><i class="sw model"></i>model context lane</span>
+  </div>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 450" role="img" aria-label="Data flow swimlanes: disk, Node server, model context, browser, from before the call to after it">
+      <text class="hd" x="220" y="20" text-anchor="middle">Before the call</text>
+      <text class="hd" x="410" y="20" text-anchor="middle">Verify</text>
+      <text class="hd" x="600" y="20" text-anchor="middle">During the call</text>
+      <text class="hd" x="790" y="20" text-anchor="middle">Call ends</text>
+      <text class="hd" x="1005" y="20" text-anchor="middle">After</text>
+
+      <rect class="lane" x="10" y="30" width="1100" height="96" rx="10"/>
+      <rect class="lane" x="10" y="134" width="1100" height="96" rx="10"/>
+      <rect class="lane model" x="10" y="238" width="1100" height="96" rx="10"/>
+      <rect class="lane" x="10" y="342" width="1100" height="96" rx="10"/>
+      <text class="t" x="24" y="62">Disk</text><text class="s" x="24" y="80">data/, results/</text>
+      <text class="t" x="24" y="166">Node server</text><text class="s" x="24" y="184">src/agent.js</text><text class="s" x="24" y="200">one state per call</text>
+      <text class="t" x="24" y="270" fill="var(--pass)" style="fill:var(--pass)">Model sees</text><text class="s" x="24" y="288">OpenAI Realtime</text><text class="s" x="24" y="304">context</text>
+      <text class="t" x="24" y="374">Browser</text><text class="s" x="24" y="392">public/call.js</text>
+
+      <!-- before -->
+      <rect class="bx file" x="138" y="48" width="164" height="60" rx="8"/><text class="tm" x="220" y="68" text-anchor="middle">borrowers.json</text><text class="s" x="220" y="84" text-anchor="middle">name, dob, last 4, EMI</text><text class="neg" x="220" y="100" text-anchor="middle">dob, digits stay here</text>
+      <rect class="bx" x="138" y="152" width="164" height="60" rx="8"/><text class="tm" x="220" y="172" text-anchor="middle">loadBorrowers()</text><text class="s" x="220" y="188" text-anchor="middle">due dates from today</text><text class="s" x="220" y="204" text-anchor="middle">then instructions()</text>
+      <rect class="bx core" x="138" y="256" width="164" height="60" rx="8"/><text class="t" x="220" y="276" text-anchor="middle">Session prompt</text><text class="s" x="220" y="292" text-anchor="middle">name, language, calendar</text><text class="neg" x="220" y="308" text-anchor="middle">no loan data</text>
+      <!-- verify -->
+      <rect class="bx" x="328" y="152" width="164" height="60" rx="8"/><text class="tm" x="410" y="172" text-anchor="middle">verify_identity</text><text class="s" x="410" y="188" text-anchor="middle">compares in code</text><text class="s" x="410" y="204" text-anchor="middle">3 misses lock the call</text>
+      <rect class="bx core" x="328" y="256" width="164" height="60" rx="8"/><text class="t" x="410" y="276" text-anchor="middle">Account facts</text><text class="s" x="410" y="292" text-anchor="middle">spoken phrases only</text><text class="posi" x="410" y="308" text-anchor="middle">only after a match</text>
+      <!-- during -->
+      <rect class="bx" x="518" y="152" width="164" height="60" rx="8"/><text class="t" x="600" y="172" text-anchor="middle">Call state</text><text class="s" x="600" y="188" text-anchor="middle">verified, attempts, link sent</text><text class="neg" x="600" y="204" text-anchor="middle">model never sees it</text>
+      <rect class="bx core" x="518" y="256" width="150" height="60" rx="8"/><text class="t" x="593" y="276" text-anchor="middle">Conversation</text><text class="s" x="593" y="292" text-anchor="middle">audio, transcript,</text><text class="s" x="593" y="308" text-anchor="middle">tool arguments</text>
+      <rect class="bx" x="518" y="360" width="164" height="60" rx="8"/><text class="t" x="600" y="380" text-anchor="middle">Call log in memory</text><text class="s" x="600" y="396" text-anchor="middle">transcript, latencies,</text><text class="s" x="600" y="412" text-anchor="middle">barge-ins, tool timings</text>
+      <!-- ends -->
+      <rect class="bx" x="708" y="152" width="164" height="60" rx="8"/><text class="tm" x="790" y="172" text-anchor="middle">buildRecord()</text><text class="s" x="790" y="188" text-anchor="middle">state + model args</text><text class="s" x="790" y="204" text-anchor="middle">+ escalation backstop</text>
+      <rect class="bx core" x="708" y="256" width="164" height="60" rx="8"/><text class="tm" x="790" y="276" text-anchor="middle">record_outcome</text><text class="s" x="790" y="292" text-anchor="middle">outcome, date, notes,</text><text class="s" x="790" y="308" text-anchor="middle">escalate, language</text>
+      <rect class="bx" x="708" y="360" width="164" height="60" rx="8"/><text class="tm" x="790" y="380" text-anchor="middle">POST /api/calllog</text><text class="s" x="790" y="396" text-anchor="middle">on hang-up; no record?</text><text class="s" x="790" y="412" text-anchor="middle">then no_resolution</text>
+      <!-- after -->
+      <rect class="bx file" x="908" y="36" width="194" height="40" rx="8"/><text class="tm" x="1005" y="61" text-anchor="middle">data/outcomes.jsonl</text>
+      <rect class="bx file" x="908" y="82" width="194" height="40" rx="8"/><text class="tm" x="1005" y="107" text-anchor="middle">data/calls/&lt;id&gt;.json</text>
+      <rect class="bx" x="908" y="152" width="194" height="60" rx="8"/><text class="tm" x="1005" y="172" text-anchor="middle">GET /api/calls</text><text class="tm" x="1005" y="188" text-anchor="middle">GET /api/evals/latest</text><text class="s" x="1005" y="204" text-anchor="middle">+ newest summary.json</text>
+      <rect class="bx" x="908" y="360" width="194" height="60" rx="8"/><text class="t" x="1005" y="380" text-anchor="middle">Call page tables</text><text class="s" x="1005" y="396" text-anchor="middle">recent calls, outcomes,</text><text class="s" x="1005" y="412" text-anchor="middle">latest eval metrics</text>
+
+      <!-- arrows -->
+      <path class="ar" d="M220,108 V150"/><text class="lbl on2" x="226" y="133">read per session</text>
+      <path class="ar core" d="M220,212 V254"/><text class="lbl on2" x="226" y="237">prompt</text>
+      <path class="ar" d="M302,182 H326"/>
+      <path class="ar" d="M370,256 V214"/><text class="lbl on2" x="300" y="237" text-anchor="start">dob, last 4</text>
+      <path class="ar core" d="M450,212 V254"/><text class="lbl on2" x="456" y="237">facts, on match</text>
+      <path class="ar" d="M492,182 H516"/>
+      <path class="ar two live" d="M560,318 V358"/><text class="lbl on2" x="566" y="340">WebRTC</text>
+      <path class="ar" d="M676,360 V214"/><text class="lbl on2" x="681" y="340">/api/tool</text>
+      <path class="ar" d="M682,182 H706"/>
+      <path class="ar" d="M790,256 V214"/><text class="lbl on2" x="796" y="237">args</text>
+      <path class="ar" d="M682,390 H706"/>
+      <path class="ar" d="M872,170 H888 V56 H906"/><text class="lbl on2" x="884" y="144" text-anchor="end">append</text>
+      <path class="ar" d="M872,390 H897 V102 H906"/><text class="lbl on2" x="893" y="340" text-anchor="end">write</text>
+      <path class="ar" d="M1005,122 V150"/>
+      <path class="ar" d="M1005,212 V358"/><text class="lbl on2" x="1011" y="290">JSON</text>
+    </svg>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Data</th><th>Lives in</th><th>Model sees it</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Name, preferred language</td><td><code>data/borrowers.json</code></td><td><span class="tag yes">yes, from the start</span></td><td>In the prompt with today's date and a 21-day calendar.</td></tr>
+        <tr><td>DOB, last 4 of mobile</td><td><code>data/borrowers.json</code></td><td><span class="tag no">never</span></td><td>The model passes what the caller said. Code compares.</td></tr>
+        <tr><td>EMI, due date, overdue days</td><td>computed in <code>loadBorrowers()</code></td><td><span class="tag yes">after verify only</span></td><td>As spoken phrases from <code>src/spoken.js</code>, in English and Hindi. No digits.</td></tr>
+        <tr><td>verified, payment_link_sent, attempts</td><td>call state in server memory</td><td><span class="tag no">never</span></td><td>Copied into the outcome record by code.</td></tr>
+        <tr><td>Outcome, promise date, notes</td><td><code>data/outcomes.jsonl</code></td><td><span class="tag yes">writes it</span></td><td>Validated. Hardship and dispute always escalate.</td></tr>
+        <tr><td>Transcript, latencies, barge-ins, tool timings</td><td><code>data/calls/&lt;id&gt;.json</code></td><td><span class="tag no">no</span></td><td>Sent by the browser on hang-up. <code>/api/calls</code> drops the transcript.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 3. ARCHITECTURE -->
+<section class="board" id="architecture">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">3 · Architecture</div>
+      <h2>The parts and what each one owns</h2>
+      <p>Click a box to see what it does and where the code is.</p>
+    </div>
+  </div>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 410" role="img" aria-label="Architecture: browser, OpenAI Realtime, Node server modules, storage, eval runner, OpenAI chat">
+      <rect class="bx core" x="40" y="40" width="250" height="110" rx="10"/><text class="t" x="60" y="68">Browser</text><text class="sm" x="60" y="90">public/call.js</text><text class="s" x="60" y="110">mic, speaker, level meters</text><text class="s" x="60" y="128">silence and filler timers</text>
+      <rect class="bx ext" x="830" y="40" width="250" height="110" rx="10"/><text class="t" x="850" y="68">OpenAI Realtime</text><text class="sm" x="850" y="90">gpt-realtime, voice marin</text><text class="s" x="850" y="110">server VAD, 500 ms</text><text class="s" x="850" y="128">barge-in cancels replies</text>
+      <rect class="cont" x="340" y="190" width="450" height="200" rx="12"/><text class="hd" x="356" y="212">Node server · src/</text>
+      <rect class="bx" x="360" y="226" width="200" height="64" rx="8"/><text class="tm" x="376" y="252">server.js</text><text class="s" x="376" y="272">routes, keys, call logs</text>
+      <rect class="bx" x="576" y="226" width="196" height="64" rx="8"/><text class="tm" x="592" y="252">agent.js</text><text class="s" x="592" y="272">prompt, tools, call state</text>
+      <rect class="bx" x="360" y="306" width="200" height="64" rx="8"/><text class="tm" x="376" y="332">realtime.js</text><text class="s" x="376" y="352">session config, TextAgent</text>
+      <rect class="bx" x="576" y="306" width="196" height="64" rx="8"/><text class="tm" x="592" y="332">spoken.js</text><text class="s" x="592" y="352">rupees, dates in words</text>
+      <rect class="bx file" x="40" y="250" width="250" height="120" rx="10"/><text class="t" x="60" y="276">Storage</text><text class="sm" x="60" y="298">data/borrowers.json</text><text class="sm" x="60" y="316">data/outcomes.jsonl</text><text class="sm" x="60" y="334">data/calls/</text><text class="sm" x="60" y="352">results/&lt;run&gt;/</text>
+      <rect class="bx gate" x="830" y="200" width="250" height="80" rx="10"/><text class="t" x="850" y="228">Eval runner</text><text class="sm" x="850" y="250">evals/run.js, score.js</text><text class="s" x="850" y="268">18 scenarios × 3</text>
+      <rect class="bx ext" x="830" y="310" width="250" height="80" rx="10"/><text class="t" x="850" y="338">OpenAI chat</text><text class="s" x="850" y="358">borrower gpt-4.1-mini</text><text class="s" x="850" y="376">judge gpt-4.1</text>
+
+      <path class="ar core two live" d="M292,80 H828"/><text class="lbl" x="560" y="72" text-anchor="middle">WebRTC: audio + oai-events</text>
+      <path class="ar" d="M470,226 V120 H828"/><text class="lbl" x="650" y="136" text-anchor="middle">POST /v1/realtime/client_secrets</text>
+      <path class="ar" d="M292,130 H320 V258 H358"/><text class="lbl" x="326" y="160">/api/session</text><text class="lbl" x="326" y="176">/api/tool, /api/calllog</text>
+      <path class="ar" d="M560,258 H574"/>
+      <path class="ar" d="M460,290 V304"/>
+      <path class="ar" d="M674,290 V304"/>
+      <path class="ar two" d="M340,330 H292"/>
+      <path class="ar" d="M830,240 H774"/>
+      <path class="ar" d="M955,200 V152"/><text class="lbl" x="961" y="180">WebSocket, text</text>
+      <path class="ar two" d="M955,280 V308"/>
+
+      <rect class="hit" data-k="browser" x="40" y="40" width="250" height="110" rx="10" tabindex="0" role="button" aria-label="Browser"/>
+      <rect class="hit" data-k="realtime" x="830" y="40" width="250" height="110" rx="10" tabindex="0" role="button" aria-label="OpenAI Realtime"/>
+      <rect class="hit" data-k="server" x="360" y="226" width="200" height="64" rx="8" tabindex="0" role="button" aria-label="server.js"/>
+      <rect class="hit" data-k="agent" x="576" y="226" width="196" height="64" rx="8" tabindex="0" role="button" aria-label="agent.js"/>
+      <rect class="hit" data-k="rtjs" x="360" y="306" width="200" height="64" rx="8" tabindex="0" role="button" aria-label="realtime.js"/>
+      <rect class="hit" data-k="spoken" x="576" y="306" width="196" height="64" rx="8" tabindex="0" role="button" aria-label="spoken.js"/>
+      <rect class="hit" data-k="storage" x="40" y="250" width="250" height="120" rx="10" tabindex="0" role="button" aria-label="Storage"/>
+      <rect class="hit" data-k="evals" x="830" y="200" width="250" height="80" rx="10" tabindex="0" role="button" aria-label="Eval runner"/>
+      <rect class="hit" data-k="chat" x="830" y="310" width="250" height="80" rx="10" tabindex="0" role="button" aria-label="OpenAI chat"/>
+    </svg>
+  </div>
+  <div class="comp" aria-live="polite">
+    <div><h3 id="archTitle"></h3><div class="chips" id="archFiles"></div><ul id="archDoes"></ul></div>
+    <div><div class="bl">Talks to</div><div class="chips" id="archTalks"></div><p class="note" id="archNote" style="margin-top:10px"></p></div>
+  </div>
+</section>
+
+<!-- 4. TOPOLOGY -->
+<section class="board" id="topology">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">4 · Topology</div>
+      <h2>What talks to what, on the wire</h2>
+      <p>Two setups share the same prompt and tools. A live call runs in the browser. An eval run is one Node process with no browser and no server.</p>
+    </div>
+  </div>
+  <h3 class="sub">a · Live call</h3>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 400" role="img" aria-label="Live call topology: browser to OpenAI over WebRTC, browser to local server over HTTP, server to OpenAI to mint a key">
+      <rect class="bx core" x="30" y="30" width="260" height="340" rx="12"/>
+      <text class="t" x="50" y="58">Browser</text><text class="sm" x="50" y="78">index.html + call.js</text>
+      <text class="s" x="50" y="110">Mic in, agent audio out</text>
+      <text class="s" x="50" y="128">Runs tools via the server</text>
+      <text class="s" x="50" y="146">Silence nudge after 7 s</text>
+      <text class="s" x="50" y="164">Filler if a tool takes 1.5 s</text>
+      <text class="s" x="50" y="182">Measures latency per turn</text>
+      <rect class="bx key" x="50" y="300" width="220" height="50" rx="8"/><text class="s" x="160" y="320" text-anchor="middle">holds a client secret</text><text class="s" x="160" y="336" text-anchor="middle">valid 10 minutes</text>
+
+      <rect class="bx ext" x="820" y="30" width="270" height="130" rx="12"/>
+      <text class="t" x="840" y="58">OpenAI Realtime</text><text class="sm" x="840" y="78">api.openai.com</text>
+      <text class="s" x="840" y="104">gpt-realtime, server VAD</text><text class="s" x="840" y="122">transcribes the caller</text><text class="s" x="840" y="140">speaks with voice marin</text>
+
+      <rect class="bx" x="820" y="240" width="270" height="130" rx="12"/>
+      <text class="t" x="840" y="268">Node server</text><text class="sm" x="840" y="288">localhost:3000 · src/server.js</text>
+      <text class="s" x="840" y="312">call state in memory</text>
+      <rect class="bx key" x="840" y="324" width="230" height="32" rx="6"/><text class="s" x="955" y="344" text-anchor="middle">OPENAI_API_KEY from .env</text>
+
+      <path class="ar core two live" d="M292,60 H818"/><text class="lbl" x="555" y="53" text-anchor="middle">audio both ways (WebRTC media)</text>
+      <path class="ar core two live" d="M292,95 H818"/><text class="lbl" x="555" y="88" text-anchor="middle">data channel "oai-events": session, response, VAD events</text>
+      <path class="ar" d="M292,130 H818"/><text class="lbl" x="555" y="123" text-anchor="middle">once: POST /v1/realtime/calls, SDP offer, Bearer client secret</text>
+      <path class="ar two" d="M292,270 H818"/><text class="lbl" x="555" y="263" text-anchor="middle">POST /api/session → call_id, client_secret</text>
+      <path class="ar two" d="M292,305 H818"/><text class="lbl" x="555" y="298" text-anchor="middle">POST /api/tool {call_id, name, args} → result</text>
+      <path class="ar two" d="M292,340 H818"/><text class="lbl" x="555" y="333" text-anchor="middle">POST /api/calllog on hang-up → outcome record</text>
+      <path class="ar ok" d="M955,240 V163"/><text class="lbl" x="963" y="196">POST client_secrets</text><text class="lbl" x="963" y="212">with the real key</text>
+    </svg>
+  </div>
+  <div class="rules">
+    <div class="rule good"><b>Audio never touches our server</b>Mic and agent audio flow only between the browser and OpenAI.</div>
+    <div class="rule good"><b>The real key stays on the server</b>The browser gets a client secret that expires after 10 minutes.</div>
+    <div class="rule"><b>Tools run on the server</b>The browser forwards each function call to <code>/api/tool</code>. Call state lives there.</div>
+  </div>
+
+  <h3 class="sub">b · Eval run</h3>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 370" role="img" aria-label="Eval topology: run.js drives the agent over Realtime WebSocket in text mode, uses chat completions for the borrower and the judge, writes results files">
+      <rect class="bx file" x="30" y="40" width="200" height="60" rx="8"/><text class="tm" x="130" y="64" text-anchor="middle">scenarios.json</text><text class="s" x="130" y="84" text-anchor="middle">18 personas + expected record</text>
+      <rect class="cont" x="290" y="20" width="440" height="230" rx="12"/><text class="hd" x="306" y="42">evals/run.js · one process, 4 calls at a time</text>
+      <rect class="bx" x="310" y="56" width="190" height="64" rx="8"/><text class="tm" x="326" y="80">createCall()</text><text class="s" x="326" y="100">same tools, in process</text>
+      <rect class="bx" x="520" y="56" width="190" height="64" rx="8"/><text class="tm" x="536" y="80">TextAgent</text><text class="s" x="536" y="100">same prompt and tools</text>
+      <rect class="bx" x="310" y="136" width="190" height="64" rx="8"/><text class="tm" x="326" y="160">borrower loop</text><text class="s" x="326" y="180">up to 14 turns, nudges</text>
+      <rect class="bx" x="520" y="136" width="190" height="64" rx="8"/><text class="tm" x="536" y="160">score.js</text><text class="s" x="536" y="180">rules on the transcript</text>
+      <text class="s" x="310" y="232">Mock link delay 300 ms here, 2.5 s in live calls.</text>
+
+      <rect class="bx ext" x="800" y="30" width="290" height="64" rx="10"/><text class="t" x="816" y="56">OpenAI Realtime, WebSocket</text><text class="s" x="816" y="76">text out, no VAD, no audio</text>
+      <rect class="bx ext" x="800" y="110" width="290" height="64" rx="10"/><text class="t" x="816" y="136">Chat: borrower</text><text class="s" x="816" y="156">gpt-4.1-mini plays the persona</text>
+      <rect class="bx ext" x="800" y="190" width="290" height="64" rx="10"/><text class="t" x="816" y="216">Chat: judge</text><text class="s" x="816" y="236">gpt-4.1, JSON flags and scores</text>
+
+      <path class="ar" d="M230,70 H288"/>
+      <path class="ar two" d="M710,72 H798"/>
+      <path class="ar two" d="M730,142 H798"/>
+      <path class="ar two" d="M730,222 H798"/>
+      <path class="ar" d="M357,250 V288"/><path class="ar" d="M507,250 V288"/><path class="ar" d="M660,250 V288"/>
+      <rect class="bx file" x="290" y="290" width="135" height="46" rx="8"/><text class="tm" x="357" y="318" text-anchor="middle">runs.jsonl</text>
+      <rect class="bx file" x="440" y="290" width="135" height="46" rx="8"/><text class="tm" x="507" y="318" text-anchor="middle">summary.json</text>
+      <rect class="bx file" x="590" y="290" width="140" height="46" rx="8"/><text class="tm" x="660" y="318" text-anchor="middle">report.md</text>
+      <text class="sm" x="290" y="358">results/&lt;run&gt;/</text>
+      <rect class="bx" x="800" y="290" width="290" height="46" rx="10"/><text class="tm" x="945" y="312" text-anchor="middle">GET /api/evals/latest</text><text class="s" x="945" y="328" text-anchor="middle">call page shows the newest run</text>
+      <path class="ar" d="M507,336 V352 H945 V338"/>
+    </svg>
+  </div>
+  <p class="note">The text eval tests the same prompt, tools and gates. It cannot see VAD, barge-in, mishearing or audio latency.</p>
+</section>
+
+<!-- 5. SEQUENCE -->
+<section class="board" id="sequence">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">5 · One turn</div>
+      <h2>One turn with a tool call, then a barge-in</h2>
+      <p>The caller agrees to a payment link. The tool takes 2.5 seconds. Then the caller talks over the agent.</p>
+    </div>
+    <div class="controls">
+      <button type="button" aria-label="Previous step" data-seq="-1">←</button>
+      <button type="button" id="seqPlay">Play</button>
+      <button type="button" aria-label="Next step" data-seq="1">→</button>
+      <span class="count" id="seqCount">all</span>
+    </div>
+  </div>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 560" role="img" aria-label="Sequence diagram of one turn with a tool call and a barge-in" id="seqSvg">
+      <rect class="band" x="60" y="446" width="1050" height="96" rx="8"/>
+      <text class="hd" x="1100" y="462" text-anchor="end" style="fill:var(--warn)">Barge-in</text>
+      <rect class="lane-head" x="90" y="16" width="160" height="36" rx="8"/><text class="t" x="170" y="39" text-anchor="middle">Caller</text>
+      <rect class="lane-head" x="350" y="16" width="160" height="36" rx="8"/><text class="t" x="430" y="39" text-anchor="middle">Browser</text>
+      <rect class="lane-head" x="620" y="16" width="160" height="36" rx="8"/><text class="t" x="700" y="39" text-anchor="middle">OpenAI Realtime</text>
+      <rect class="lane-head" x="900" y="16" width="160" height="36" rx="8"/><text class="t" x="980" y="39" text-anchor="middle">Node server</text>
+      <line class="lifeline" x1="170" y1="52" x2="170" y2="545"/><line class="lifeline" x1="430" y1="52" x2="430" y2="545"/><line class="lifeline" x1="700" y1="52" x2="700" y2="545"/><line class="lifeline" x1="980" y1="52" x2="980" y2="545"/>
+      <g id="msgs"></g>
+    </svg>
+  </div>
+  <p class="seqnote" id="seqNote" aria-live="polite">Press Play, or use the arrows to step through.</p>
+</section>
+
+<!-- 6. LATENCY -->
+<section class="board" id="latency">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">6 · Latency</div>
+      <h2>Where the wait comes from</h2>
+      <p>What the caller feels: their last sound to the agent's first sound. Live voice numbers are not measured yet.</p>
+    </div>
+  </div>
+  <div class="bar" role="img" aria-label="Wait parts: VAD 500 ms, model time, network and audio unmeasured">
+    <span class="seg-vad" style="flex:500">VAD silence 500 ms</span>
+    <span class="seg-model" style="flex:518">model first output</span>
+    <span class="seg-net" style="flex:260">network, audio ?</span>
+  </div>
+  <div class="rules">
+    <div class="rule"><b>500 ms, set</b>Server VAD waits this long after speech ends. <code>VAD_SILENCE_MS</code>.</div>
+    <div class="rule"><b>518 ms median, 728 ms p90</b>Text-mode first token from the final eval run. Model time only. No audio, no network.</div>
+    <div class="rule warn"><b>Live voice: not measured</b>The call page records it per turn. Numbers go into <code>docs/RESULTS.md</code> after demo calls.</div>
+  </div>
+  <h3 class="sub">How one sample is measured</h3>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 210" role="img" aria-label="Latency measurement: mic level last sound to speaker level first sound" id="waveSvg">
+      <text class="t" x="20" y="58">Mic level</text><text class="t" x="20" y="138">Speaker level</text>
+      <g id="waveMic"></g><g id="waveAgent"></g>
+      <line class="mark" x1="420" y1="24" x2="420" y2="170"/><text class="s" x="420" y="18" text-anchor="middle">last caller sound (level above 0.02)</text>
+      <line class="mark" x1="670" y1="40" x2="670" y2="170"/><text class="s" x="670" y="34" text-anchor="middle">speech_stopped event</text>
+      <line class="mark" x1="900" y1="90" x2="900" y2="170"/><text class="s" x="900" y="84" text-anchor="middle">first agent sound (above 0.01)</text>
+      <path class="span" d="M424,186 H896"/><text class="lbl" x="660" y="202" text-anchor="middle">one latency sample, saved in data/calls/&lt;id&gt;.json</text>
+      <text class="sm" x="545" y="164" text-anchor="middle">VAD 500 ms</text>
+      <text class="sm" x="785" y="164" text-anchor="middle">model + network</text>
+    </svg>
+  </div>
+  <p class="note">Meters sample every 10 ms in <code>call.js</code>. The clock starts at the last sound, not at the VAD event, so the 500 ms counts. When a tool returns, a new sample runs from the result to the next agent sound.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Lever</th><th>What it does</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Shorter VAD silence</td><td>Cuts the fixed 500 ms</td><td>Can cut in when someone pauses mid-number</td></tr>
+        <tr><td><code>TURN_DETECTION=semantic</code></td><td>Waits for a complete thought</td><td>Variable delay</td></tr>
+        <tr><td>Short first sentence</td><td>Audio starts sooner</td><td>Prompt rule, not enforced</td></tr>
+        <tr><td>Start tools on <code>output_item.done</code></td><td>Tool runs before the response ends</td><td>None seen</td></tr>
+        <tr><td>Filler after 1.5 s</td><td>No dead air during slow tools</td><td>One extra short line</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 7. GUARDRAILS -->
+<section class="board" id="guardrails">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">7 · Guardrails</div>
+      <h2>What is enforced in code, asked in the prompt, or checked by evals</h2>
+      <p>Code rules hold even when the model gets it wrong. Prompt rules depend on the model, so evals check them.</p>
+    </div>
+  </div>
+  <div class="legend"><span><span class="tag code">code</span>enforced</span><span><span class="tag prompt">prompt</span>asked of the model</span><span><span class="tag eval">eval</span>measured</span></div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Rule</th><th>Code</th><th>Prompt</th><th>Eval check</th></tr></thead>
+      <tbody>
+        <tr><td>No loan details before verification</td><td><span class="tag code">code</span> Prompt has no loan data. Facts come only from <code>verify_identity</code> on a match.</td><td><span class="tag prompt">prompt</span> Never say loan, amount, date or type</td><td><span class="tag eval">eval</span> Word-match rule + judge. 0 in final run</td></tr>
+        <tr><td>Three misses lock the call</td><td><span class="tag code">code</span> <code>MAX_VERIFY_ATTEMPTS = 3</code>, then <code>locked</code></td><td><span class="tag prompt">prompt</span> Point to the Lumen website, close</td><td><span class="tag eval">eval</span> <code>verify_fail</code> scenario outcome</td></tr>
+        <tr><td>Link only to a verified borrower</td><td><span class="tag code">code</span> <code>send_payment_link</code> returns <code>not_verified</code></td><td><span class="tag prompt">prompt</span> Offer as a question, send only after yes</td><td><span class="tag eval">eval</span> <code>payment_link_sent</code> matches expected</td></tr>
+        <tr><td>Record fields from state</td><td><span class="tag code">code</span> <code>verified</code>, <code>payment_link_sent</code> copied from call state</td><td class="muted">n/a</td><td><span class="tag eval">eval</span> Outcome accuracy 98%</td></tr>
+        <tr><td>Hardship and dispute go to a human</td><td><span class="tag code">code</span> Backstop forces <code>escalate_to_human</code></td><td><span class="tag prompt">prompt</span> Say a colleague will call</td><td><span class="tag eval">eval</span> Backstop needed in 0/54 calls, every run</td></tr>
+        <tr><td>Promise date is valid</td><td><span class="tag code">code</span> YYYY-MM-DD and not in the past, else rejected</td><td><span class="tag prompt">prompt</span> 21-day calendar to resolve "next Friday"</td><td><span class="tag eval">eval</span> Date exact 9/9</td></tr>
+        <tr><td>Goodbye before hang-up</td><td><span class="tag code">code</span> Browser asks for a one-line goodbye if <code>end_call</code> follows the caller</td><td><span class="tag prompt">prompt</span> Speak goodbye, then the tools</td><td><span class="tag eval">eval</span> Silent ends 4/54. Evals do not run the browser backstop</td></tr>
+        <tr><td>No digits read out</td><td><span class="tag code">code</span> Tools return words, from <code>spoken.js</code></td><td><span class="tag prompt">prompt</span> No digits, symbols, ISO dates</td><td><span class="tag eval">eval</span> 8/54 calls still had one</td></tr>
+        <tr><td>Silence</td><td><span class="tag code">code</span> Nudge after 7 s, close after the second</td><td><span class="tag prompt">prompt</span> Nudge text</td><td><span class="tag eval">eval</span> Borrower can go silent</td></tr>
+        <tr><td>No threats, waivers or drift</td><td class="muted">none</td><td><span class="tag prompt">prompt</span> Limits section</td><td><span class="tag eval">eval</span> Judge only. Never fired, recall unproven</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 8. EVALS -->
+<section class="board" id="evals">
+  <div class="board-head">
+    <div class="bh">
+      <div class="eyebrow">8 · Eval loop</div>
+      <h2>How we know it works, and what changed</h2>
+      <p>Four runs on 2026-11-23, one change at a time. Each run is 54 calls.</p>
+    </div>
+  </div>
+  <div class="steps">
+    <div><b>18 scenarios</b>Persona, script, expected record. <code>evals/scenarios.json</code></div>
+    <div><b>× 3 runs</b>Real agent, Realtime in text mode.</div>
+    <div><b>LLM borrower</b><code>gpt-4.1-mini</code>. Can go silent or hang up.</div>
+    <div><b>Rules</b>Outcome match, disclosure, digits, silent end.</div>
+    <div class="j"><b>LLM judge</b><code>gpt-4.1</code>. Threats, false promises, drift, tone.</div>
+    <div><b>Report</b><code>results/&lt;run&gt;/report.md</code> with failed transcripts.</div>
+  </div>
+  <div class="scroll">
+    <svg viewBox="0 0 1120 270" role="img" aria-label="Results across four eval runs: pass rate, outcome accuracy, silent hang-ups" id="chartSvg"></svg>
+  </div>
+  <div class="legend"><span><i class="sw" style="background:var(--faint);border-color:var(--faint)"></i>runs 1 to 3</span><span><i class="sw" style="background:var(--accent);border-color:var(--accent)"></i>run 4, final</span></div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Metric</th><th>1 baseline</th><th>2 prompt fix</th><th>3 more fixes</th><th>4 final</th></tr></thead>
+      <tbody>
+        <tr><td>Pass, all checks</td><td>47/54 *</td><td>44/54</td><td>45/54</td><td><b>49/54</b></td></tr>
+        <tr><td>Outcome accuracy</td><td>87%</td><td>89%</td><td>93%</td><td><b>98%</b></td></tr>
+        <tr><td>Hung up without a goodbye</td><td>23/54 *</td><td>4/54</td><td>2/54</td><td>4/54</td></tr>
+        <tr><td>Disclosure before verification (rule)</td><td>0</td><td>0</td><td>3</td><td><b>0</b></td></tr>
+        <tr><td>Promise date exact</td><td>9/9</td><td>9/9</td><td>9/9</td><td>9/9</td></tr>
+        <tr><td>Text first token, median / p90</td><td>553 / 826 ms</td><td>527 / 750 ms</td><td>482 / 728 ms</td><td>518 / 728 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">* Run 1 had no silent-end rule. Its 23 silent ends were counted from the transcripts afterwards, and its pass count does not include that check. The judge rated all 23 as "ended gracefully". Tone and naturalness scores sat at 4.94 to 5 on every run, so they are not used to compare runs.</p>
+  <div class="rules">
+    <div class="rule good"><b>Silent hang-up: 23 → 4</b>The goodbye now comes before the tools. The browser adds one if it is missing.</div>
+    <div class="rule good"><b>Impostor leak: fixed</b>The lock message said "the number on your loan papers". The rule caught it. The judge did not.</div>
+    <div class="rule warn"><b>Still open</b>Asks about the link, then ends the call in the same turn (<code>on_time#1</code>). Dashes and digits still slip into text.</div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs = {}, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  // ---------- 1. call flow ----------
+  const STAGES = [
+    { t: 'Greet', p: 'One fixed opening line: "Hi, this is Asha calling from Lumen Finance. Am I speaking with Rahul Sharma?" The prompt holds the name, the preferred language and a calendar. Nothing about the loan.',
+      f: ['prompt: name + language only', 'wrong_number', 'third_party', 'callback_requested', 'refused_to_talk'] },
+    { t: 'Verify', p: 'The agent asks for date of birth or the last four digits of the mobile. It passes every answer to verify_identity. Code compares against the file. Three misses lock the call, and the agent closes without any detail.',
+      f: ['verify_identity(dob | phone_last4)', 'MAX_VERIFY_ATTEMPTS = 3', 'verification_failed'] },
+    { t: 'Remind', p: 'On a match the tool returns spoken phrases, like "twelve thousand five hundred rupees, due this Friday". The agent gives the reminder in one short turn and asks what they plan to do.',
+      f: ['reminder_en / reminder_hi', 'amount_due_en / amount_due_hi', 'src/spoken.js: lakh system'] },
+    { t: 'Listen', p: 'The agent maps what the caller says to a situation: pays on time, already paid, a later date, hardship or dispute. Vague dates get one follow-up for a specific day.',
+      f: ['will_pay_on_time', 'paid_already', 'promise_to_pay', 'hardship (escalates)', 'dispute (escalates)'] },
+    { t: 'Act', p: 'The agent offers the payment link as a question and waits for yes. send_payment_link takes 2.5 s in the mock. If nobody is speaking after 1.5 s, the browser plays a short filler line. Hardship and disputes go to a human.',
+      f: ['send_payment_link: refuses if not verified', 'filler after 1.5 s', 'promise date: YYYY-MM-DD, not past'] },
+    { t: 'Close', p: 'One line on what was agreed, a spoken goodbye, then record_outcome and end_call in the same turn. If end_call comes right after the caller spoke, the browser asks for a one-line goodbye first.',
+      f: ['record_outcome', 'end_call', 'browser goodbye backstop'] },
+  ];
+  let fi = 0, flowTimer = null;
+  function flowGo(i) {
+    fi = (i + STAGES.length) % STAGES.length;
+    $$('#stages .stage').forEach((g, k) => g.classList.toggle('on', k === fi));
+    $$('#flow [data-from]').forEach((e) => e.classList.toggle('on', e.dataset.from.split(' ').includes(String(fi))));
+    $('#runner').style.transform = `translate(${fi * 180}px, 0)`;
+    const s = STAGES[fi];
+    $('#flowNum').textContent = `Step ${fi + 1}`; $('#flowTitle').textContent = s.t; $('#flowText').textContent = s.p;
+    $('#flowFacts').innerHTML = s.f.map((x) => `<li>${esc(x)}</li>`).join('');
+    $('#flowCount').textContent = `${fi + 1} / ${STAGES.length}`;
+  }
+  function flowStop() { clearInterval(flowTimer); flowTimer = null; $('#flowPlay').textContent = 'Play'; }
+  function flowPlay() { flowStop(); flowTimer = setInterval(() => flowGo(fi + 1), 3200); $('#flowPlay').textContent = 'Pause'; }
+  $('#flowPlay').onclick = () => (flowTimer ? flowStop() : flowPlay());
+  $$('[data-flow]').forEach((b) => (b.onclick = () => { flowStop(); flowGo(fi + +b.dataset.flow); }));
+  $$('#stages .stage').forEach((g) => {
+    const go = () => { flowStop(); flowGo(+g.dataset.i); };
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  flowGo(0);
+  if (reduce) flowStop(); else flowPlay();
+
+  // ---------- 3. architecture ----------
+  const ARCH = {
+    browser: { t: 'Browser', files: ['public/call.js', 'public/index.html'],
+      does: ['Opens WebRTC to OpenAI with the client secret', 'Sends each function call to /api/tool as soon as its arguments are done', 'Silence nudge after 7 s, hang-up after the second', 'Filler line if a tool runs 1.5 s with nobody speaking', 'Goodbye backstop before end_call', 'Measures latency from mic and speaker levels', 'Posts the call log on hang-up'],
+      talks: ['realtime', 'server'], note: 'Holds only a 10-minute client secret. Never the real API key.' },
+    realtime: { t: 'OpenAI Realtime', files: ['gpt-realtime', 'voice marin', 'gpt-4o-mini-transcribe'],
+      does: ['Speech in, speech out in one model', 'Server VAD: threshold 0.55, 500 ms silence', 'Barge-in: interrupt_response cancels and truncates the reply', 'Calls the four tools by name'],
+      talks: ['browser', 'evals'], note: 'Session config comes from realtimeSession() in src/realtime.js.' },
+    server: { t: 'server.js', files: ['src/server.js'],
+      does: ['POST /api/session: mints a client secret with the real key', 'POST /api/tool: runs a tool against the call state', 'POST /api/calllog: finalizes the record, writes data/calls/<id>.json', 'GET /api/borrowers, /api/calls, /api/evals/latest', 'Serves public/'],
+      talks: ['agent', 'rtjs', 'storage', 'realtime', 'browser'], note: 'Plain node:http. No framework. Port 3000 by default.' },
+    agent: { t: 'agent.js', files: ['src/agent.js'],
+      does: ['loadBorrowers(): due dates relative to today', 'instructions(): the prompt, name and language only', 'TOOLS: verify_identity, send_payment_link, record_outcome, end_call', 'createCall(): call state and tool handlers', 'buildRecord(): state + args + escalation backstop'],
+      talks: ['spoken', 'storage'], note: 'Shared by live calls and evals, so both test the same agent.' },
+    rtjs: { t: 'realtime.js', files: ['src/realtime.js'],
+      does: ['realtimeSession(): model, voice, VAD, transcription', 'TextAgent: same prompt and tools over WebSocket, text out', 'SILENCE_NUDGES used by browser and evals'],
+      talks: ['realtime'], note: 'TURN_DETECTION=semantic switches to semantic VAD.' },
+    spoken: { t: 'spoken.js', files: ['src/spoken.js'],
+      does: ['Rupees in words, Indian lakh system, English and Hindi', 'Dates relative to today: "this Friday, the twenty-seventh"', 'The 21-day calendar in the prompt'],
+      talks: [], note: 'Why the agent never needs to read digits.' },
+    storage: { t: 'Storage', files: ['data/borrowers.json', 'data/outcomes.jsonl', 'data/calls/<id>.json', 'results/<run>/'],
+      does: ['Borrower file with relative due offsets', 'One outcome record per line', 'One call log per call: transcript, latencies, barge-ins, tool timings', 'Eval runs: runs.jsonl, summary.json, report.md'],
+      talks: [], note: 'Plain files. No database.' },
+    evals: { t: 'Eval runner', files: ['evals/run.js', 'evals/score.js', 'evals/scenarios.json'],
+      does: ['18 scenarios × 3, 4 at a time', 'Real agent over Realtime in text mode', 'LLM borrower plays each persona', 'Rule checks, then an LLM judge', 'Writes results/<run>/'],
+      talks: ['agent', 'realtime', 'chat', 'storage'], note: 'npm run eval. Tools run in process with a 300 ms link delay.' },
+    chat: { t: 'OpenAI chat', files: ['gpt-4.1-mini', 'gpt-4.1'],
+      does: ['Borrower simulator, temperature 0.8', 'Judge, temperature 0, JSON output'],
+      talks: ['evals'], note: 'Used only by evals.' },
+  };
+  function archGo(k) {
+    const a = ARCH[k];
+    $$('#architecture .hit').forEach((h) => { h.classList.toggle('sel', h.dataset.k === k); h.classList.toggle('dim', h.dataset.k !== k); });
+    $('#archTitle').textContent = a.t;
+    $('#archFiles').innerHTML = a.files.map((f) => `<span class="chip">${esc(f)}</span>`).join('');
+    $('#archDoes').innerHTML = a.does.map((d) => `<li>${esc(d)}</li>`).join('');
+    $('#archTalks').innerHTML = a.talks.length ? a.talks.map((x) => `<button type="button" class="chip" data-go="${x}">${esc(ARCH[x].t)}</button>`).join('') : '<span class="muted">nothing, others call it</span>';
+    $('#archNote').textContent = a.note;
+    $$('#archTalks [data-go]').forEach((b) => (b.onclick = () => archGo(b.dataset.go)));
+  }
+  $$('#architecture .hit').forEach((h) => {
+    h.addEventListener('click', () => archGo(h.dataset.k));
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); archGo(h.dataset.k); } });
+  });
+  archGo('server');
+
+  // ---------- 5. sequence ----------
+  const X = { caller: 170, browser: 430, rt: 700, server: 980 };
+  const SEQ = [
+    ['caller', 'rt', 'speaks: "Yes, send the link"', 'The mic track goes straight to OpenAI over WebRTC. The browser only watches the level.'],
+    ['rt', 'browser', 'speech_stopped (500 ms silence)', 'Server VAD fires. The browser starts the latency clock from the caller\'s last audible sound.'],
+    ['rt', 'caller', 'audio: "Sure, sending it now."', 'The model speaks a short line first, as the prompt asks, so there is no dead air.'],
+    ['rt', 'browser', 'output_item.done: send_payment_link', 'The function call arguments are complete. The browser starts the tool now, before the response ends.'],
+    ['browser', 'server', 'POST /api/tool', 'The server runs the tool against this call\'s state. It refuses if the caller is not verified.'],
+    ['browser', 'rt', 'response.create: filler', 'After 1.5 s, if no audio is playing and no response is active: "Just a second, it\'s going through." It is not added to the conversation.'],
+    ['server', 'browser', 'result: sent (after 2.5 s)', 'The mock waits 2.5 s. B006 fails on the first try so the retry path gets tested.'],
+    ['browser', 'rt', 'function_call_output + response.create', 'After response.done, the browser sends the result and asks for the next reply.'],
+    ['rt', 'caller', 'audio: "Done, it\'s on your phone now."', 'The agent tells the caller the final result.'],
+    ['caller', 'rt', 'talks over the agent', 'The caller starts speaking while agent audio is still playing.'],
+    ['rt', 'browser', 'speech_started: reply cancelled', 'interrupt_response is on, so Realtime cancels the reply and truncates what the model thinks it said. The browser counts one barge-in.'],
+  ];
+  const msgs = $('#msgs');
+  SEQ.forEach(([a, b, label], i) => {
+    const y = 90 + i * 40 + (i >= 9 ? 16 : 0);
+    const x1 = X[a], x2 = X[b], dir = x2 > x1 ? 1 : -1;
+    const g = el('g', { class: 'msg', 'data-i': i });
+    g.append(el('path', { class: 'ln', d: `M${x1 + dir * 4},${y} H${x2 - dir * 6}` }));
+    g.append(el('circle', { class: 'badge', cx: 76, cy: y, r: 11 }));
+    g.append(el('text', { class: 'bn', x: 76, y: y + 4, 'text-anchor': 'middle' }, i + 1));
+    g.append(el('text', { class: 'mt', x: (x1 + x2) / 2, y: y - 7, 'text-anchor': 'middle' }, label));
+    msgs.append(g);
+  });
+  let si = -1, seqTimer = null;
+  function seqGo(i) {
+    si = Math.max(0, Math.min(SEQ.length - 1, i));
+    $('#seqSvg').classList.add('stepping');
+    $$('#msgs .msg').forEach((g, k) => g.classList.toggle('on', k === si));
+    $('#seqNote').innerHTML = `<b>${si + 1}</b>${esc(SEQ[si][3])}`;
+    $('#seqCount').textContent = `${si + 1} / ${SEQ.length}`;
+  }
+  function seqStop() { clearInterval(seqTimer); seqTimer = null; $('#seqPlay').textContent = 'Play'; }
+  $('#seqPlay').onclick = () => {
+    if (seqTimer) return seqStop();
+    if (si >= SEQ.length - 1) si = -1;
+    seqGo(si + 1);
+    seqTimer = setInterval(() => (si >= SEQ.length - 1 ? seqStop() : seqGo(si + 1)), 2600);
+    $('#seqPlay').textContent = 'Pause';
+  };
+  $$('[data-seq]').forEach((b) => (b.onclick = () => { seqStop(); seqGo(si + +b.dataset.seq); }));
+
+  // ---------- 6. waveforms ----------
+  const bars = (g, cls, from, to, mid, seed) => {
+    for (let x = from, n = seed; x < to; x += 6, n++) {
+      const h = 6 + Math.abs(Math.sin(n * 1.7) * 18 + Math.sin(n * 0.43) * 10);
+      g.append(el('rect', { class: cls, x, y: mid - h / 2, width: 3, height: h, rx: 1 }));
+    }
+  };
+  bars($('#waveMic'), 'wave-mic', 140, 420, 54, 1);
+  bars($('#waveAgent'), 'wave-agent', 900, 1100, 134, 5);
+  $('#waveMic').append(el('line', { x1: 140, y1: 54, x2: 1100, y2: 54, stroke: 'var(--line)' }));
+  $('#waveAgent').append(el('line', { x1: 140, y1: 134, x2: 1100, y2: 134, stroke: 'var(--line)' }));
+
+  // ---------- 8. results chart ----------
+  const RUNS = ['1 baseline', '2 prompt fix', '3 more fixes', '4 final'];
+  const GROUPS = [
+    { t: 'Pass, all checks', s: 'higher is better', v: [47, 44, 45, 49] },
+    { t: 'Outcome record correct', s: 'higher is better', v: [47, 48, 50, 53] },
+    { t: 'Hung up without a goodbye', s: 'lower is better', v: [23, 4, 2, 4], bad: true },
+  ];
+  const svg = $('#chartSvg'), base = 210, scale = 150 / 54;
+  GROUPS.forEach((G, gi) => {
+    const gx = 40 + gi * 370;
+    svg.append(el('text', { class: 't', x: gx, y: 22 }, G.t));
+    svg.append(el('text', { class: 's', x: gx, y: 38 }, `${G.s}, out of 54`));
+    svg.append(el('line', { class: 'axis', x1: gx, y1: base, x2: gx + 300, y2: base }));
+    G.v.forEach((v, i) => {
+      const x = gx + i * 76, h = v * scale;
+      svg.append(el('rect', { class: `b r${i + 1}${G.bad ? ' bad' : ''}`, x, y: base - h, width: 56, height: Math.max(h, 1), rx: 4 }));
+      svg.append(el('text', { class: 'val', x: x + 28, y: base - h - 6, 'text-anchor': 'middle' }, v));
+      svg.append(el('text', { class: 'sm', x: x + 28, y: base + 16, 'text-anchor': 'middle' }, `run ${i + 1}`));
+    });
+  });
+  svg.append(el('text', { class: 's', x: 40, y: 258 }, 'Run 1: no silent-end rule yet, counted afterwards from transcripts.'));
+
+  // ---------- toc ----------
+  const links = $$('.toc a');
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => { if (e.isIntersecting) links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  $$('section.board').forEach((s) => io.observe(s));
+})();
+</script>
+</body>
+</html>

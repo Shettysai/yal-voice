@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen EMI Agent</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .page { max-width: 1320px; margin: 0 auto; padding: 16px 20px 40px; }
+  .layout { display: grid; grid-template-columns: minmax(260px, 330px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .layout > * { min-width: 0; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+
+  /* borrower list */
+  .people { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+  .person { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; background: var(--card); }
+  .person:hover { border-color: var(--muted); }
+  .person input { position: absolute; opacity: 0; pointer-events: none; }
+  .person:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .person:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .person .nm { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .person .lang { font-size: 11px; color: var(--muted); }
+  .people[aria-disabled="true"] .person { cursor: default; opacity: .55; }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .badge.upcoming { background: var(--soft); color: var(--muted); }
+  .badge.due_today { background: var(--warn-bg); color: var(--warn); }
+  .badge.overdue { background: var(--bad-bg); color: var(--bad); }
+
+  /* who you are playing */
+  .play { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .play h3 { margin: 0 0 2px; font-size: 18px; }
+  .play .sub { color: var(--muted); margin: 0 0 12px; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+  .facts div { background: var(--soft); border-radius: 8px; padding: 8px 10px; }
+  .facts dt { font-size: 11px; color: var(--muted); }
+  .facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .secret { margin-top: 10px; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; }
+  .secret .label { margin-bottom: 6px; }
+  .secret .facts dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; }
+
+  /* call panel */
+  .callbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .callbar .who { flex: 1; min-width: 160px; }
+  .callbar .who b { display: block; font-size: 16px; }
+  .bigbtn { font-size: 16px; font-weight: 600; padding: 12px 22px; border-radius: 99px; min-width: 150px; }
+  .bigbtn.end { background: var(--danger); color: #fff; }
+  .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  #status { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 10px; border-radius: 99px; background: var(--soft); color: var(--muted); font-weight: 600; font-size: 13px; }
+  #status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+  #status[data-s="connecting"] { color: var(--warn); background: var(--warn-bg); }
+  #status[data-s="listening"] { color: var(--ok); background: var(--ok-bg); }
+  #status[data-s="thinking"] { color: var(--warn); background: var(--warn-bg); }
+  #status[data-s="agent speaking"] { color: var(--accent); background: var(--agent); }
+  #status[data-s^="tool"] { color: var(--ink); background: var(--soft); }
+  #status[data-s="listening"]::before, #status[data-s="agent speaking"]::before,
+  #status[data-s="thinking"]::before, #status[data-s="connecting"]::before, #status[data-s^="tool"]::before { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+  @media (prefers-reduced-motion: reduce) { #status::before { animation: none !important; } }
+  .timer { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .chip { font-size: 12px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .tip { margin: 10px 0 0; }
+  .err { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bad-bg); color: var(--bad); }
+  #lat { display: none; }
+
+  /* transcript */
+  .tbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; margin-top: 16px; }
+  .tbar label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  #transcript { min-width: 0; height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  #transcript:empty::before { content: "The conversation shows here. The agent speaks first."; color: var(--muted); margin: auto; text-align: center; font-size: 13px; }
+  #transcript.quiet .msg.sys { display: none; }
+  @media (max-width: 500px) { #transcript { height: 340px; } }
+  .msg { padding: 8px 12px; border-radius: 14px; max-width: 85%; overflow-wrap: anywhere; }
+  .msg.agent { background: var(--agent); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.caller { background: var(--caller); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.agent::before, .msg.caller::before { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .msg.agent::before { content: "Agent"; } .msg.caller::before { content: "Borrower"; }
+  .msg.sys { color: var(--muted); font-size: 11px; align-self: stretch; max-width: none; padding: 2px 8px; border-left: 2px solid var(--line); border-radius: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg.sys:hover { white-space: normal; }
+
+  /* transcript + trace side by side when the call card is wide enough */
+  .views { container-type: inline-size; min-width: 0; }
+  .vgrid > .view { min-width: 0; }
+  @container (min-width: 800px) {
+    .vgrid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); gap: 14px; }
+    .vgrid > .view { display: flex; flex-direction: column; }
+    .vgrid #trace { flex: 1 1 0; height: auto; min-height: 240px; }
+  }
+  .ttotals { margin: 8px 0 0; gap: 4px; }
+  .ttotals .chip { font-size: 11px; padding: 1px 7px; }
+  #trace { min-width: 0; height: 386px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 12px; }
+  #trace:empty::before { content: "LLM calls, tool calls and caller turns show here live."; color: var(--muted); margin: auto; text-align: center; font-size: 13px; padding: 0 12px; }
+  @media (max-width: 500px) { #trace { height: 306px; } }
+  .tr { flex: none; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 6px; background: var(--card); }
+  .tr.llm { border-left-color: var(--accent); }
+  .tr.tool { border-left-color: var(--warn); }
+  .tr.turn { border-left-color: var(--ok); }
+  .tr.barge { border-left-color: var(--bad); background: var(--warn-bg); }
+  .tr.bad { border-color: var(--bad); border-left-color: var(--bad); background: var(--bad-bg); }
+  .tr summary { list-style: none; margin: 0; padding: 5px 8px; color: var(--ink); font-size: 12px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; }
+  .tr summary::-webkit-details-marker { display: none; }
+  .tat { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; padding-top: 1px; font-variant-numeric: tabular-nums; }
+  .tmain { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+  .tline2 { grid-column: 2; display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--muted); }
+  .ttag { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .ttag.llm { color: var(--accent); } .ttag.tool { color: var(--warn); } .ttag.turn { color: var(--ok); } .ttag.err { color: var(--bad); }
+  .tpill { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 99px; background: var(--soft); color: var(--muted); white-space: nowrap; }
+  .tpill.kind { color: var(--ink); }
+  .tpill.ok { background: var(--ok-bg); color: var(--ok); }
+  .tpill.warn { background: var(--warn-bg); color: var(--warn); }
+  .tpill.bad { background: var(--bad-bg); color: var(--bad); }
+  .tpill.run { background: var(--warn-bg); color: var(--warn); display: inline-flex; align-items: center; gap: 5px; }
+  .tpill.run::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .tpill.run::before { animation: none; } }
+  .tstat { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tname { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+  .tsay { color: var(--ink); overflow-wrap: anywhere; }
+  .tcalls, .tnote { font-size: 11px; }
+  .targs, .tres { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: none; padding: 0; overflow-wrap: anywhere; color: var(--muted); }
+  .tr.bad .tres { color: var(--bad); }
+  .tbody { padding: 0 8px 8px; border-top: 1px solid var(--line); }
+  .tlabel { margin: 6px 0 2px; font-size: 11px; color: var(--muted); }
+  .tpre { margin: 0; max-height: 220px; overflow: auto; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  /* outcome */
+  .outcome { margin-top: 16px; }
+  .ocard { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .ohead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ohead b { font-size: 16px; text-transform: capitalize; }
+  .ogrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0; }
+  .ogrid div { background: var(--soft); border-radius: 8px; padding: 6px 10px; }
+  .ogrid dt { font-size: 11px; color: var(--muted); } .ogrid dd { margin: 0; font-weight: 600; }
+  .yes { color: var(--ok); } .no { color: var(--muted); } .flag { color: var(--bad); }
+  .notes { margin: 10px 0 0; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  #outcome { margin: 6px 0 0; max-height: 260px; }
+  #outcome:empty { display: none; }
+
+  /* secondary */
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .tab { background: none; color: var(--muted); border-radius: 0; border-bottom: 2px solid transparent; padding: 8px 12px; font-weight: 600; }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .secondary { margin-top: 16px; }
+  .empty { color: var(--muted); padding: 12px 0; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .metrics div { background: var(--soft); border-radius: 8px; padding: 8px 10px; }
+  .metrics span { display: block; font-size: 11px; color: var(--muted); } .metrics b { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lumen Finance: EMI reminder agent</h1>
+  <nav><a href="/" aria-current="page">Call</a><a href="/how-it-works">How it works</a></nav>
+</header>
+<main class="page">
+  <div class="layout">
+    <section class="card" aria-labelledby="pick-h">
+      <p class="label" id="pick-h">1. Pick a borrower</p>
+      <fieldset class="people" id="people" aria-labelledby="pick-h"><p class="empty">Loading borrowers.</p></fieldset>
+      <div class="play" id="play" hidden>
+        <p class="label">You are playing</p>
+        <h3 id="p-name"></h3>
+        <p class="sub" id="p-sub"></p>
+        <dl class="facts">
+          <div><dt>Amount due</dt><dd id="p-amt"></dd></div>
+          <div><dt id="p-when-l">Due date</dt><dd id="p-when"></dd></div>
+        </dl>
+        <div class="secret">
+          <p class="label">Your answers if the agent asks to verify</p>
+          <dl class="facts">
+            <div><dt>Date of birth</dt><dd id="p-dob"></dd></div>
+            <div><dt>Phone last 4</dt><dd id="p-l4"></dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="call-h">
+      <p class="label" id="call-h">2. Run the call</p>
+      <div class="callbar">
+        <div class="who"><span class="hint">Calling</span><b id="c-name">No borrower picked</b></div>
+        <button id="callbtn" class="bigbtn" type="button" disabled>Start call</button>
+      </div>
+      <div class="meta">
+        <span id="status" data-s="idle" role="status" aria-live="polite">ready</span>
+        <span class="timer" id="timer" aria-label="Call time">0:00</span>
+        <div class="chips" id="chips" aria-label="Response time"><span class="chip">Response time shows after the first reply</span></div>
+      </div>
+      <span id="lat"></span>
+      <p class="hint tip">Use headphones. Interrupt any time.</p>
+      <div class="err" id="err" role="alert" hidden></div>
+
+      <div class="views"><div class="vgrid">
+        <div class="view">
+          <div class="tbar">
+            <p class="label" style="margin:0">Transcript</p>
+            <label><input type="checkbox" id="showsys" checked> Show tool steps</label>
+          </div>
+          <div id="transcript" aria-live="polite"></div>
+        </div>
+        <div class="view">
+          <div class="tbar">
+            <p class="label" style="margin:0" id="trace-h">Live trace</p>
+            <span class="hint">Click a row for details</span>
+          </div>
+          <div class="chips ttotals" id="trace-totals" aria-label="Trace totals"></div>
+          <div id="trace" aria-labelledby="trace-h"></div>
+        </div>
+      </div></div>
+
+      <div class="outcome" id="outwrap" hidden>
+        <p class="label">Outcome</p>
+        <div id="ocard"></div>
+        <details><summary>Show JSON</summary><pre id="outcome"></pre></details>
+      </div>
+    </section>
+  </div>
+
+  <section class="card secondary">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-calls" aria-selected="true" aria-controls="pane-calls" type="button">Recent calls</button>
+      <button class="tab" role="tab" id="t-eval" aria-selected="false" aria-controls="pane-eval" type="button" tabindex="-1">Latest eval</button>
+    </div>
+    <div id="pane-calls" role="tabpanel" aria-labelledby="t-calls">
+      <div class="scroll"><table id="calls"><thead><tr><th>When</th><th>Borrower</th><th>Outcome</th><th>Verified</th><th>Link</th><th>Escalate</th><th>Pay date</th><th>Median ms</th><th>Notes</th></tr></thead><tbody></tbody></table></div>
+      <p class="empty" id="calls-empty" hidden>No calls yet. Finished calls show here.</p>
+    </div>
+    <div id="pane-eval" role="tabpanel" aria-labelledby="t-eval" hidden>
+      <div id="eval" class="empty">No eval run yet. Run <code>npm run eval</code>.</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { startCall, hangup } from '/call.js';
+import '/trace.js';
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN');
+const STATUS = { upcoming: 'Upcoming', due_today: 'Due today', overdue: 'Overdue' };
+const LANG = { en: 'English', hi: 'Hindi' };
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+const showErr = (m) => { $('#err').textContent = m; $('#err').hidden = !m; };
+async function getJSON(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`${path} returned ${r.status}`);
+  return r.json();
+}
+
+// ---------- borrowers ----------
+let borrowers = [];
+let picked = null;
+let inCall = false;
+
+function renderPeople() {
+  $('#people').innerHTML = borrowers.map((b, i) => `
+    <label class="person"><input type="radio" name="borrower" value="${esc(b.id)}" ${i === 0 ? 'checked' : ''}>
+      <span class="nm">${esc(b.name)}</span><span class="lang">${esc(LANG[b.language] || b.language)}</span>
+      <span class="badge ${esc(b.status)}">${esc(STATUS[b.status] || b.status)}</span></label>`).join('');
+  $('#people').onchange = (e) => pick(e.target.value);
+  pick(borrowers[0].id);
+}
+
+function pick(id) {
+  picked = borrowers.find((b) => b.id === id);
+  const b = picked;
+  $('#play').hidden = false;
+  $('#p-name').textContent = b.name;
+  $('#p-sub').textContent = `${b.loan_type}, ${LANG[b.language] || b.language}, ${b.id}`;
+  $('#p-amt').textContent = rupees(b.amount_due);
+  if (b.status === 'overdue') { $('#p-when-l').textContent = 'Overdue by'; $('#p-when').textContent = `${b.days_overdue} days`; }
+  else { $('#p-when-l').textContent = 'Due date'; $('#p-when').textContent = b.status === 'due_today' ? 'Today' : fmtDate(b.due_date); }
+  $('#p-dob').textContent = fmtDate(b.dob);
+  $('#p-l4').textContent = b.phone_last4;
+  $('#c-name').textContent = b.name;
+  $('#callbtn').disabled = false;
+}
+
+// ---------- call button ----------
+function setInCall(on) {
+  inCall = on;
+  const btn = $('#callbtn');
+  btn.textContent = on ? 'Hang up' : 'Start call';
+  btn.classList.toggle('end', on);
+  $('#people').setAttribute('aria-disabled', on);
+  $('#people').disabled = on;
+}
+
+$('#callbtn').onclick = async () => {
+  showErr('');
+  if (!inCall) {
+    if (!picked) return;
+    setInCall(true);
+    $('#outwrap').hidden = true; $('#ocard').innerHTML = '';
+    resetLatency();
+    try { await startCall(picked.id); }
+    catch (e) {
+      const m = e.name === 'NotAllowedError' ? 'Microphone access was blocked. Allow the microphone for this page and try again.'
+        : e.name === 'NotFoundError' ? 'No microphone found. Plug one in and try again.'
+        : `Could not start the call: ${e.message}`;
+      showErr(m);
+      stopTimer(); setInCall(false);
+      setStatusText('ready');
+    }
+  } else {
+    $('#callbtn').disabled = true;
+    try { await hangup(); } catch (e) { showErr(`Could not save the call: ${e.message}`); }
+    $('#callbtn').disabled = false;
+    setInCall(false); setTimeout(loadCalls, 300);
+  }
+};
+
+function setStatusText(s) { $('#status').textContent = s; $('#status').dataset.s = s === 'ready' ? 'idle' : s; }
+
+// ---------- status, timer ----------
+let t0 = 0, tick = null;
+const fmtT = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+function startTimer() { t0 = Date.now(); clearInterval(tick); $('#timer').textContent = '0:00'; tick = setInterval(() => { $('#timer').textContent = fmtT(Date.now() - t0); }, 500); }
+function stopTimer() { clearInterval(tick); tick = null; }
+
+new MutationObserver(() => {
+  const s = $('#status').textContent;
+  if (s === 'connecting') startTimer();
+  if (s === 'ended') { stopTimer(); if (inCall) { setInCall(false); setTimeout(loadCalls, 300); } }
+}).observe($('#status'), { childList: true, characterData: true, subtree: true });
+
+// ---------- latency: read call.js text, show as chips ----------
+function resetLatency() { $('#chips').innerHTML = '<span class="chip">Response time shows after the first reply</span>'; }
+new MutationObserver(() => {
+  const t = $('#lat').textContent;
+  const m = t.match(/last (\d+) ms .*?median (\d+) .*?p90 (\d+) .*?n=(\d+)/);
+  if (!m) return;
+  $('#chips').innerHTML = `<span class="chip">last <b>${m[1]}</b> ms</span><span class="chip">median <b>${m[2]}</b> ms</span><span class="chip">p90 <b>${m[3]}</b> ms</span><span class="chip">${m[4]} turns</span>`;
+}).observe($('#lat'), { childList: true, characterData: true, subtree: true });
+
+// ---------- transcript toggle ----------
+$('#showsys').onchange = (e) => $('#transcript').classList.toggle('quiet', !e.target.checked);
+
+// ---------- outcome card ----------
+const yn = (v, bad) => v ? `<span class="${bad ? 'flag' : 'yes'}">Yes</span>` : '<span class="no">No</span>';
+new MutationObserver(() => {
+  const raw = $('#outcome').textContent.trim();
+  if (!raw) { $('#outwrap').hidden = true; return; }
+  let r;
+  try { r = JSON.parse(raw); } catch { showErr(raw); return; }
+  const outcome = (r.outcome || 'none').replace(/_/g, ' ');
+  $('#ocard').innerHTML = `<div class="ocard">
+    <div class="ohead"><b>${esc(outcome)}</b></div>
+    <dl class="ogrid">
+      <div><dt>Verified</dt><dd>${yn(r.verified)}</dd></div>
+      <div><dt>Payment link sent</dt><dd>${yn(r.payment_link_sent)}</dd></div>
+      <div><dt>Send to a human</dt><dd>${yn(r.escalate_to_human, true)}</dd></div>
+      <div><dt>Promised pay date</dt><dd>${r.promise_to_pay_date ? esc(fmtDate(r.promise_to_pay_date)) : '<span class="no">None</span>'}</dd></div>
+      ${r.callback_time ? `<div><dt>Call back</dt><dd>${esc(r.callback_time)}</dd></div>` : ''}
+    </dl>
+    ${r.notes ? `<p class="notes">${esc(r.notes)}</p>` : ''}
+  </div>`;
+  $('#outwrap').hidden = false;
+}).observe($('#outcome'), { childList: true, characterData: true, subtree: true });
+
+// ---------- tabs ----------
+const tabs = [$('#t-calls'), $('#t-eval')];
+function selectTab(t) {
+  tabs.forEach((x) => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; $('#' + x.getAttribute('aria-controls')).hidden = !on; });
+  t.focus();
+}
+tabs.forEach((t, i) => {
+  t.onclick = () => selectTab(t);
+  t.onkeydown = (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') selectTab(tabs[(i + 1) % 2]); };
+});
+
+// ---------- recent calls, eval ----------
+const med = (a) => a?.length ? [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] : '';
+const nameOf = (id) => borrowers.find((b) => b.id === id)?.name || id;
+async function loadCalls() {
+  try {
+    const calls = await getJSON('/api/calls');
+    $('#calls-empty').hidden = calls.length > 0;
+    $('#calls').hidden = calls.length === 0;
+    $('#calls tbody').innerHTML = calls.slice(0, 20).map((c) => { const r = c.record || {}; return `<tr>
+      <td>${esc(new Date(c.started_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }))}</td><td>${esc(nameOf(c.borrower_id))}</td>
+      <td>${esc((r.outcome || '').replace(/_/g, ' '))}</td><td>${r.verified ? 'yes' : 'no'}</td><td>${r.payment_link_sent ? 'yes' : 'no'}</td>
+      <td>${r.escalate_to_human ? 'yes' : 'no'}</td><td>${esc(r.promise_to_pay_date || '')}</td><td>${med(c.latencies_ms)}</td><td>${esc(r.notes || '')}</td></tr>`; }).join('');
+  } catch (e) { $('#calls-empty').hidden = false; $('#calls-empty').textContent = `Could not load calls: ${e.message}`; }
+  try {
+    const ev = await getJSON('/api/evals/latest');
+    if (ev) $('#eval').innerHTML = `<p class="hint">Run ${esc(ev.run_id)}: ${esc(ev.runs)} conversations, ${esc(ev.scenarios)} scenarios, ${esc(ev.repeats)} times each. Full report in <code>results/${esc(ev.run_id)}/report.md</code>.</p>
+      <div class="metrics">${Object.entries(ev.metrics).map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+  } catch (e) { $('#eval').textContent = `Could not load the eval: ${e.message}`; }
+}
+
+try {
+  borrowers = await getJSON('/api/borrowers');
+  if (borrowers.length) renderPeople(); else $('#people').innerHTML = '<p class="empty">No borrowers found in data/borrowers.json.</p>';
+} catch (e) {
+  $('#people').innerHTML = '';
+  showErr(`Could not load borrowers: ${e.message}. Is the server running?`);
+}
+loadCalls();
+</script>
+</body>
+</html>

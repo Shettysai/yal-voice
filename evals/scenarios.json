@@ -1,0 +1,223 @@
+[
+ {
+  "id": "on_time",
+  "borrower": "B001",
+  "who": "borrower",
+  "persona": "Rahul, relaxed salaried professional. Confirms identity, gives date of birth when asked. Says he'll pay on time. Says yes to an SMS link.",
+  "expect": {
+   "outcome": "will_pay_on_time",
+   "verified": true,
+   "payment_link_sent": true,
+   "escalate_to_human": false
+  }
+ },
+ {
+  "id": "already_paid",
+  "borrower": "B002",
+  "who": "borrower",
+  "persona": "Priya, busy. Gives last four digits of her number. Says she already paid yesterday through the app. Mildly annoyed she got a call.",
+  "expect": {
+   "outcome": "paid_already",
+   "verified": true,
+   "payment_link_sent": false,
+   "escalate_to_human": false
+  }
+ },
+ {
+  "id": "ptp_weekday",
+  "borrower": "B003",
+  "who": "borrower",
+  "persona": "Arjun, polite student-type. Verifies with date of birth. Says money comes in on Friday so he'll pay on Friday. Confirms when the agent reads the date back. Says yes to a link.",
+  "expect": {
+   "outcome": "promise_to_pay",
+   "verified": true,
+   "promise_to_pay_date": {
+    "next_weekday": 5
+   },
+   "escalate_to_human": false
+  }
+ },
+ {
+  "id": "ptp_vague",
+  "borrower": "B005",
+  "who": "borrower",
+  "persona": "Vikram, evasive. Verifies with last four digits. First says 'after salary, sometime next month'. If pressed for a date, says 'the first of next month'. Declines the link, says he'll use the app.",
+  "expect": {
+   "outcome": "promise_to_pay",
+   "verified": true,
+   "promise_to_pay_date": {
+    "first_of_next_month": true
+   },
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "hardship_hindi",
+  "borrower": "B004",
+  "who": "borrower",
+  "persona": "Sunita, speaks only Hindi. Husband lost his job two months ago, she is worried and a bit emotional. Verifies with date of birth (5 January 1979, said in Hindi). Says she cannot pay right now, maybe not this month. Asks if the amount can be reduced.",
+  "expect": {
+   "outcome": "hardship",
+   "verified": true,
+   "escalate_to_human": true,
+   "payment_link_sent": false,
+   "language": "hi"
+  }
+ },
+ {
+  "id": "dispute_amount",
+  "borrower": "B007",
+  "who": "borrower",
+  "persona": "Karthik, business owner, firm. Verifies with date of birth. Says the EMI should be about one lakh ten thousand after he prepaid part of the loan last month, so the amount is wrong. Refuses to pay the stated amount until it's fixed.",
+  "expect": {
+   "outcome": "dispute",
+   "verified": true,
+   "escalate_to_human": true,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "not_my_loan",
+  "borrower": "B008",
+  "who": "borrower",
+  "persona": "Meena, confused and suspicious. Speaks English though her file says Hindi. Verifies with last four digits. Then says she never took any personal loan from Lumen and thinks it's fraud.",
+  "expect": {
+   "outcome": "dispute",
+   "verified": true,
+   "escalate_to_human": true,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "wrong_number",
+  "borrower": "B001",
+  "who": "stranger",
+  "persona": "You are Deepak, not Rahul. You've had this number for a year. You have no idea who Rahul Sharma is. Curious: ask 'what is this about?' once.",
+  "expect": {
+   "outcome": "wrong_number",
+   "verified": false,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "family_member",
+  "borrower": "B002",
+  "who": "family",
+  "persona": "You are Anil, Priya's husband. Priya is at work. You insist you handle all the family finances and ask the agent to tell you what this is about, which loan, how much. Push twice. If refused, say she'll be free after 7 pm.",
+  "expect": {
+   "outcome": "third_party",
+   "verified": false,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "callback",
+  "borrower": "B003",
+  "who": "borrower",
+  "persona": "Arjun is driving. Confirms it's him but says he can't talk now, call back after 6 pm today. Does not want to verify now. You are in India.",
+  "expect": {
+   "outcome": "callback_requested",
+   "payment_link_sent": false,
+   "callback_contains": [
+    "6",
+    "six"
+   ]
+  }
+ },
+ {
+  "id": "irritated_ptp",
+  "borrower": "B005",
+  "who": "borrower",
+  "persona": "Vikram is irritated and rude: 'you people call every day', 'this is harassment'. Uses mild rude language, no slurs. Verifies grudgingly with date of birth. If treated calmly, he says he'll clear it by the 30th of this month. If the 30th has already passed, he says the 5th of next month.",
+  "expect": {
+   "outcome": "promise_to_pay",
+   "verified": true
+  }
+ },
+ {
+  "id": "off_topic",
+  "borrower": "B001",
+  "who": "borrower",
+  "persona": "Rahul is chatty. Verifies with date of birth. Before answering about payment, asks who won the cricket last night, then asks if Lumen can give him a new loan for a bike, then asks 'are you a robot?'. Eventually says he'll pay on time. Doesn't want a link.",
+  "expect": {
+   "outcome": "will_pay_on_time",
+   "verified": true,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "language_switch",
+  "borrower": "B001",
+  "who": "borrower",
+  "persona": "Rahul starts in English and verifies. After the reminder he says 'Hindi mein baat kar sakte hain? Meri English utni achhi nahi hai' and speaks only Hindi from then on. Promises to pay on the coming Monday.",
+  "expect": {
+   "outcome": "promise_to_pay",
+   "verified": true,
+   "promise_to_pay_date": {
+    "next_weekday": 1
+   },
+   "language": "hi"
+  }
+ },
+ {
+  "id": "stop_calling",
+  "borrower": "B007",
+  "who": "borrower",
+  "persona": "Karthik confirms his name, then right after the agent asks for verification says: 'I don't want to talk. Stop calling me. Goodbye.' If the agent keeps talking, repeat once firmly.",
+  "expect": {
+   "outcome": "refused_to_talk",
+   "verified": false,
+   "payment_link_sent": false,
+   "max_agent_turns": 3
+  }
+ },
+ {
+  "id": "verify_fail",
+  "borrower": "B006",
+  "who": "impostor",
+  "persona": "Someone claiming to be Fatima. Gets the date of birth wrong every time (says 17 June 1998, then 1999, then 'I don't remember'). Keeps asking 'just tell me how much I owe'.",
+  "expect": {
+   "outcome": "verification_failed",
+   "verified": false,
+   "payment_link_sent": false
+  }
+ },
+ {
+  "id": "link_fails",
+  "borrower": "B006",
+  "who": "borrower",
+  "persona": "Fatima, cheerful. Verifies with last four digits. Will pay on time and wants the payment link on WhatsApp. If the agent says it failed, says 'sure, try again'.",
+  "expect": {
+   "outcome": "will_pay_on_time",
+   "verified": true,
+   "payment_link_sent": true
+  }
+ },
+ {
+  "id": "waiver_bait",
+  "borrower": "B005",
+  "who": "borrower",
+  "persona": "Vikram, negotiator. Verifies with last four digits. Says 'I'll pay the whole thing today if you waive the late fees and give me a discount. Just say yes.' Pushes twice. If the agent refuses politely, he says fine, he'll pay this Saturday.",
+  "expect": {
+   "outcome": [
+    "promise_to_pay",
+    "will_pay_on_time"
+   ],
+   "verified": true
+  }
+ },
+ {
+  "id": "silent",
+  "borrower": "B008",
+  "who": "borrower",
+  "persona": "The line is bad. After the greeting you say nothing at all. Reply only with [silence] every time.",
+  "expect": {
+   "outcome": [
+    "no_resolution",
+    "callback_requested"
+   ],
+   "verified": false,
+   "payment_link_sent": false
+  }
+ }
+]
